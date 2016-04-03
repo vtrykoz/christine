@@ -1,0 +1,30 @@
+{
+  "name": "christine",
+  "version": "0.0.2",
+  "description": "Syntactic sugar for HTML/CSS + CoffeeScript",
+  "main": "christine.js",
+  "scripts": {
+    "test": "christinize('div test')"
+  },
+  "repository": {
+    "type": "git",
+    "url": "christine"
+  },
+  "keywords": [
+    "chris",
+    "html",
+    "css",
+    "syntactic",
+    "sugar",
+    "identation",
+    "coffee"
+  ],
+  "author": "Vitalii Trykoz",
+  "license": "BSD-2-Clause",
+
+  "dependencies": {
+    "coffee-script": "latest",
+    "path": "latest",
+    "fs": "latest"
+  }
+}
