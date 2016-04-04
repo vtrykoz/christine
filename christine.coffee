@@ -9,7 +9,6 @@ chrisRootFolder = ''
 fs = require 'fs'
 Path = require 'path'
 coffee = require 'coffee-script'
-# coffee = require 'coffee-script'
 
 
 
@@ -51,11 +50,11 @@ countSpaces = (l) ->
             x+=1
     x
 
-    
-    
+
+
 analiseType = (l) ->
     ln = -1
-    
+
     ln = stylePropertyType if stylePropertyFilter.test l
     ln = tagType if tagFilter.test l
     ln = headTagType if headTagFilter.test l
@@ -65,19 +64,19 @@ analiseType = (l) ->
     ln = variableType if variableFilter.test l
     ln = moduleType if moduleFilter.test l
     ln
-    
+
 
 getHierarchy = (lines) ->
     lineLevels = []
     lineParents=[]
-    
+
     lastLineOfLevel = [-1]
     currentLevel = [0]
     currentRealLevel = 0
 
     for x in [0...lines.length]
         n = countSpaces lines[x]
-        lines[x] = lines[x].slice(n)
+        #lines[x] = lines[x].slice(n)
 
         if n > currentLevel[currentRealLevel]
             lastLineOfLevel.push x - 1
@@ -92,19 +91,19 @@ getHierarchy = (lines) ->
 
         lineLevels.push currentRealLevel
         lineParents[x] = lastLineOfLevel[lastLineOfLevel.length-1]
-        
+
     lineParents
-    
+
 formatVariable = (l) ->
     exportArray = []
     varContent = ''
-    
+
     varName = l.split('=')[0]
     w = 0
     while varName.split(' ')[w] == ''
         w += 1
     varName = varName.split(' ')[w]
-    
+
     c = l.split('=')
     c = c[1].split(' ')
     w = 0
@@ -113,64 +112,64 @@ formatVariable = (l) ->
             varContent += ' ' if varContent != ''
             varContent += c[w]
         w += 1
-    
+
     exportArray[0] = varName
     exportArray[1] = varContent
     exportArray
-    
-    
+
+
 processVariables = (ls, tps) ->
     varNames    = []
     varContents = []
-    
+
     for x in [0...ls.length]
         if tps[x] == variableType
             varNames.push formatVariable(ls[x])[0]
             varContents.push formatVariable(ls[x])[1]
-            
+
         if tps[x] == stylePropertyType
             for f in [0...varNames.length]
                 ls[x] = ls[x].replace(varNames[f], varContents[f]).replace(varNames[f], varContents[f]).replace(varNames[f], varContents[f]).replace(varNames[f], varContents[f])
-                
+
     ls
-    
-    
- # Module processing functions   
-    
+
+
+ # Module processing functions
+
 loadChrisModule = (moduleFilePath) ->
     msls = fs.readFileSync('./' + moduleFilePath, 'utf8')
     msls = cleanUpFile(msls)
     mls = msls.split '\n'
     mls
-    
+
 processModules = (ls, f) ->
     resultLs = []
     moduleLevelFilter = /^\s*/
-    
+
     for x in [0...ls.length]
         if moduleFilter.test ls[x]
             chrisModulePath = ls[x].split('"')[1]
             moduleLines = loadChrisModule(f + '/' + chrisModulePath)
-            
+
             moduleLevel = moduleLevelFilter.exec(ls[x])
             moduleLines[l] = moduleLevel + moduleLines[l] for l in [0...moduleLines.length]
-            
+
             moduleLines = processModules(moduleLines, path.dirname(f + '/' + chrisModulePath))
             resultLs = resultLs.concat(moduleLines)
         else
             resultLs.push ls[x]
-        
+
     resultLs
-            
-            
-    
+
+
+
 # MAIN CHRISTINE FUNCTION
 
 exports.christinize = (st) ->
     shtml(st)
 
 shtml = (sourceText) ->
-    
+
     lines       = []
     resultLines = []
     lineTypes   = []
@@ -179,44 +178,49 @@ shtml = (sourceText) ->
     resultText  = ''
 
     lines = sourceText.split '\n'
-    
+
     lines = processModules(lines, chrisRootFolder)
 
     # process types and filter lines
     for x in [0...lines.length]
         t = analiseType(lines[x])
-        if t != -1
-            lineTypes.push t
-            resultLines.push lines[x]
-    
+        # if t != -1
+        lineTypes.push t
+        resultLines.push lines[x]
+
     resultLines = processVariables(resultLines, lineTypes)
 
     lineParents = getHierarchy resultLines
 
     lineNums.push(x) for x in [0...resultLines.length]
-    
+
     resultText += "##{lineNums[x]} #{lineTypes[x]} #{resultLines[x]} - #{lineParents[x]}\n" for x in [0...resultLines.length] if debugMode
-    
+
     resultText += '<!doctype html>'
     resultText += '<html>'
     resultText += processHead(resultLines, lineParents, lineTypes, lineNums)
     resultText += processTag("body", -1, resultLines, lineParents, lineTypes, lineNums)
     resultText += '</html>'
-    
+
     resultText
 
 
-    
+
 
 formatTag = (l) ->
+    
+    # get rid of indentation
+    sp = countSpaces l
+    l = l.slice(sp)
+    
     tagArray = l.split ' '
     cleanTag = []
 
     for x in [0...tagArray.length]
         cleanTag.push tagArray[x] if tagArray[x] != ""
-    
+
     finalTag = '<' + cleanTag[0]
-    
+
     if cleanTag.length > 1
         if cleanTag[1] != 'is'
             finalTag += ' id="' + cleanTag[1] + '"'
@@ -233,13 +237,18 @@ formatTag = (l) ->
                     collectClasses = true if x < cleanTag.length - 1
             x += 1
         finalTag += ' class="' + tagClass + '"' if tagClass.length > 0
-    
+
     finalTag
 
-    
-    
-    
+
+
+
 formatProperty = (l) ->
+    
+    # get rid of indentation
+    sp = countSpaces l
+    l = l.slice(sp)
+    
     cleanProperty = '="'
     propertyNameSearch = /^\w+( *)?"/i
     t = l.match(propertyNameSearch)[0]
@@ -251,18 +260,23 @@ formatProperty = (l) ->
     cleanProperty
 
 formatStyleProperty = (l) ->
+    
+    # get rid of indentation
+    sp = countSpaces l
+    l = l.slice(sp)
+    
     dividerPosition = l.indexOf ':'
     propertyAfter = l.slice (dividerPosition + 1)
     cleanStyleProperty = l.split(':')[0] + ':'
     afterArray = propertyAfter.split ' '
-    
+
     for x in [0...afterArray.length]
         if afterArray[x] != ''
             cleanStyleProperty += afterArray[x]
             cleanStyleProperty += ' ' if x < afterArray.length - 1
-            
+
     cleanStyleProperty
-    
+
 
 formatString = (l) ->
     cleanString = l.split('"')[1]
@@ -274,38 +288,38 @@ checkSelfClosing = (t) ->
         selfClosing = false if t == selfClosingTags[i]
     selfClosing
 
-    
-    
-    
-    
+
+
+
+
 # the main recursive machines!
 
 processHead = (lines = [], links, types, lineNums) ->
     finalHead = '<head>'
-    
+
     # collect children
-    
+
     childStyleNums = []
     childTagNums = []
-    
+
     if lines.length > 0
         for x in [0...lines.length]
             if links[x] == -1
                 childStyleNums.push x if types[x] == styleClassType
                 childTagNums.push x if types[x] == headTagType
-    
-    
+
+
     # process head styles
-    
+
     if childStyleNums.length > 0
         finalHead += '<style>'
         x = 0
         while x < childStyleNums.length
             finalHead += '\n' if formatHtml
-            
+
             styleChildLines = []
             styleChildTypes = []
-            
+
             p = childStyleNums[x] + 1
             while links[p] >= childStyleNums[x]
                 if p < lines.length
@@ -315,13 +329,13 @@ processHead = (lines = [], links, types, lineNums) ->
                 else
                     break
             finalHead += processStyleTag(lines[childStyleNums[x]], styleChildLines, styleChildTypes)
-            
+
             x += 1
-    
+
         finalHead += '</style>'
-    
+
     # process head tags
-    
+
     if childTagNums.length > 0
         x = 0
         while x < childTagNums.length
@@ -330,7 +344,7 @@ processHead = (lines = [], links, types, lineNums) ->
             tagChildLinks = []
             tagChildTypes = []
             tagChildLineNums = []
-            
+
             p = childTagNums[x] + 1
             while links[p] >= childTagNums[x]
                 if p < lines.length
@@ -343,51 +357,56 @@ processHead = (lines = [], links, types, lineNums) ->
                     break
             tn = childTagNums[x]
             finalHead += processTag(lines[tn], lineNums[tn], tagChildLines, tagChildLinks, tagChildTypes, tagChildLineNums)
-            
+
             x += 1
 
-    
+
     finalHead += '</head>'
     finalHead
 
-    
-    
-    
-    
+
+
+
+
 
 processStyleTag = (tagLine, childLines = [], childTypes) ->
     finalTag = '#'
     finalTag = '.' if tagLine.split(' ')[0] == 'class'
-        
+
     if tagLine.split(' ')[1] == 'tag' #if styling tag, not the id or class
         finalTag = ''
         finalTag += tagLine.split(' ')[2] + '{'
     else
         finalTag += tagLine.split(' ')[1] + '{'
-    
+
     for x in [0...childLines.length]
         finalTag += formatStyleProperty(childLines[x]) + ';' if childTypes[x] == stylePropertyType
-            
+
     finalTag += '}'
     finalTag
-    
-    
-    
-    
-    
+
+
+
+
+
 
 processTag = (tagLine, selfLink, childLines = [], childLinks, childTypes, lineNums) ->
+    # get rid of indentation
+    sp = countSpaces tagLine
+    tagLine = tagLine.slice(sp)
+    
     tagName = tagLine.split(' ')[0]
     finalTag = formatTag tagLine
     closable = checkSelfClosing(tagLine.split(' ')[0])
-
+    
+    console.log childLines
     # collect all the children
     tagProperties = []
     tagStyles     = []
     childs        = []
     childStrings  = []
     variables     = []
-    
+
     if childLines.length > 0
         for x in [0...childLines.length]
             if childLinks[x] == selfLink
@@ -455,6 +474,8 @@ processTag = (tagLine, selfLink, childLines = [], childLinks, childTypes, lineNu
                         p += 1
                     else
                         break
+                
+                console.log tagChildLines
 
                 finalTag += processTag(childLines[tl], lineNums[tl], tagChildLines, tagChildLinks, tagChildTypes, tagChildLineNums)
 
@@ -463,43 +484,39 @@ processTag = (tagLine, selfLink, childLines = [], childLinks, childTypes, lineNu
         scriptBefore = ''
         for l in [0...childLines.length]
             scriptBefore += childLines[l] + '\n'
-        
+
         console.log scriptBefore
         finalTag = '<script>'
+        tagName = 'script'
         finalTag += coffee.compile(scriptBefore)
-        finalTag += '</script>'
-        
+
     # close tag and return final string
     if closable
         finalTag += '</' + tagName + '>'
-        
+
     finalTag += '\n' if formatHtml
-        
+
     finalTag
 
 
 cleanUpFile = (sFile) ->
     carriageTabTest = /[\r\t]/gmi
-    
+
     rFile = sFile
     while carriageTabTest.test(rFile)
         rFile = rFile.replace('\r', '\n').replace('\t', '    ')
     rFile
-    
+
 exports.christinizeFile = (chrisFilePath) ->
     sourceFile = fs.readFileSync(chrisFilePath, 'utf8')
     sourceFile = cleanUpFile(sourceFile)
-    
-    chrisRootFolder = Path.dirname chrisFilePath
-    christinizedFile = shtml(sourceFile)
 
+    christinizedFile = shtml(sourceFile)
+    
     fs.writeFile('./' + chrisFilePath + '.html', christinizedFile)
     christinizedFile
-    
+
 exports.christinizeAndSave = (chrisSource) ->
-    
+
     christinizedFile = shtml(chrisSource)
     fs.writeFile('./chrisPreview.html', christinizedFile)
-    
-    
-    

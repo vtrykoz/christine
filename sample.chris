@@ -23,12 +23,16 @@ div
     left: 16px
     bottom: 16px
     
-    input
+    input radialRange
         type "range"
         max "360"
         min "0"
-        
-        onchange "rot2.style.transform = 'rotate(' + Math.min(this.value, 180) + 'deg)';rot1.style.transform = 'rotate(' + Math.max(this.value - 180, 0) + 'deg)';"
+
+coffeescript
+    radialRange.onchange = () ->
+        rot2.style.transform = 'rotate(' + Math.min(this.value, 180) + 'deg)'
+        rot1.style.transform = 'rotate(' + Math.max(this.value - 180, 0) + 'deg)'
+
 
 div
     position: absolute

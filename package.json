@@ -1,6 +1,6 @@
 {
   "name": "christine",
-  "version": "0.0.2",
+  "version": "0.0.201",
   "description": "Syntactic sugar for HTML/CSS + CoffeeScript",
   "main": "christine.js",
   "scripts": {
@@ -16,7 +16,7 @@
     "css",
     "syntactic",
     "sugar",
-    "identation",
+    "indentation",
     "coffee"
   ],
   "author": "Vitalii Trykoz",

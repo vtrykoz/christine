@@ -100,7 +100,6 @@ getHierarchy = function(lines) {
   currentRealLevel = 0;
   for (x = _i = 0, _ref = lines.length; 0 <= _ref ? _i < _ref : _i > _ref; x = 0 <= _ref ? ++_i : --_i) {
     n = countSpaces(lines[x]);
-    lines[x] = lines[x].slice(n);
     if (n > currentLevel[currentRealLevel]) {
       lastLineOfLevel.push(x - 1);
       currentLevel.push(n);
@@ -209,10 +208,8 @@ shtml = function(sourceText) {
   lines = processModules(lines, chrisRootFolder);
   for (x = _i = 0, _ref = lines.length; 0 <= _ref ? _i < _ref : _i > _ref; x = 0 <= _ref ? ++_i : --_i) {
     t = analiseType(lines[x]);
-    if (t !== -1) {
-      lineTypes.push(t);
-      resultLines.push(lines[x]);
-    }
+    lineTypes.push(t);
+    resultLines.push(lines[x]);
   }
   resultLines = processVariables(resultLines, lineTypes);
   lineParents = getHierarchy(resultLines);
@@ -233,7 +230,9 @@ shtml = function(sourceText) {
 };
 
 formatTag = function(l) {
-  var cleanTag, collectClasses, finalTag, tagArray, tagClass, x, _i, _ref;
+  var cleanTag, collectClasses, finalTag, sp, tagArray, tagClass, x, _i, _ref;
+  sp = countSpaces(l);
+  l = l.slice(sp);
   tagArray = l.split(' ');
   cleanTag = [];
   for (x = _i = 0, _ref = tagArray.length; 0 <= _ref ? _i < _ref : _i > _ref; x = 0 <= _ref ? ++_i : --_i) {
@@ -272,7 +271,9 @@ formatTag = function(l) {
 };
 
 formatProperty = function(l) {
-  var cleanProperty, propertyNameSearch, t;
+  var cleanProperty, propertyNameSearch, sp, t;
+  sp = countSpaces(l);
+  l = l.slice(sp);
   cleanProperty = '="';
   propertyNameSearch = /^\w+( *)?"/i;
   t = l.match(propertyNameSearch)[0];
@@ -285,7 +286,9 @@ formatProperty = function(l) {
 };
 
 formatStyleProperty = function(l) {
-  var afterArray, cleanStyleProperty, dividerPosition, propertyAfter, x, _i, _ref;
+  var afterArray, cleanStyleProperty, dividerPosition, propertyAfter, sp, x, _i, _ref;
+  sp = countSpaces(l);
+  l = l.slice(sp);
   dividerPosition = l.indexOf(':');
   propertyAfter = l.slice(dividerPosition + 1);
   cleanStyleProperty = l.split(':')[0] + ':';
@@ -418,13 +421,16 @@ processStyleTag = function(tagLine, childLines, childTypes) {
 };
 
 processTag = function(tagLine, selfLink, childLines, childLinks, childTypes, lineNums) {
-  var childStrings, childs, closable, finalTag, l, p, scriptBefore, styleChildLines, styleChildTypes, tagChildLineNums, tagChildLines, tagChildLinks, tagChildTypes, tagName, tagProperties, tagStyles, tl, variables, x, _i, _j, _k, _l, _ref, _ref1, _ref2, _ref3;
+  var childStrings, childs, closable, finalTag, l, p, scriptBefore, sp, styleChildLines, styleChildTypes, tagChildLineNums, tagChildLines, tagChildLinks, tagChildTypes, tagName, tagProperties, tagStyles, tl, variables, x, _i, _j, _k, _l, _ref, _ref1, _ref2, _ref3;
   if (childLines == null) {
     childLines = [];
   }
+  sp = countSpaces(tagLine);
+  tagLine = tagLine.slice(sp);
   tagName = tagLine.split(' ')[0];
   finalTag = formatTag(tagLine);
   closable = checkSelfClosing(tagLine.split(' ')[0]);
+  console.log(childLines);
   tagProperties = [];
   tagStyles = [];
   childs = [];
@@ -515,6 +521,7 @@ processTag = function(tagLine, selfLink, childLines, childLinks, childTypes, lin
             break;
           }
         }
+        console.log(tagChildLines);
         finalTag += processTag(childLines[tl], lineNums[tl], tagChildLines, tagChildLinks, tagChildTypes, tagChildLineNums);
       }
       x += 1;
@@ -526,8 +533,8 @@ processTag = function(tagLine, selfLink, childLines, childLinks, childTypes, lin
     }
     console.log(scriptBefore);
     finalTag = '<script>';
+    tagName = 'script';
     finalTag += coffee.compile(scriptBefore);
-    finalTag += '</script>';
   }
   if (closable) {
     finalTag += '</' + tagName + '>';
@@ -552,7 +559,6 @@ exports.christinizeFile = function(chrisFilePath) {
   var christinizedFile, sourceFile;
   sourceFile = fs.readFileSync(chrisFilePath, 'utf8');
   sourceFile = cleanUpFile(sourceFile);
-  chrisRootFolder = Path.dirname(chrisFilePath);
   christinizedFile = shtml(sourceFile);
   fs.writeFile('./' + chrisFilePath + '.html', christinizedFile);
   return christinizedFile;
