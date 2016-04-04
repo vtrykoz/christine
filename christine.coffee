@@ -39,6 +39,10 @@ headTagFilter       = /^\s*(meta|title|link|base)/i
 moduleType          = 8
 moduleFilter        = /^\s*include\s*".+.chris"/i
 
+ignorableType       = -2
+emptyFilter         = /^[\W\s_]*$/
+commentFilter       = /^\s*#/i
+
 
 
 
@@ -54,7 +58,9 @@ countSpaces = (l) ->
 
 analiseType = (l) ->
     ln = -1
-
+    
+    ln = ignorableType if commentFilter.test l
+    ln = ignorableType if emptyFilter.test l
     ln = stylePropertyType if stylePropertyFilter.test l
     ln = tagType if tagFilter.test l
     ln = headTagType if headTagFilter.test l
@@ -94,6 +100,7 @@ getHierarchy = (lines) ->
 
     lineParents
 
+    
 formatVariable = (l) ->
     exportArray = []
     varContent = ''
@@ -184,9 +191,9 @@ shtml = (sourceText) ->
     # process types and filter lines
     for x in [0...lines.length]
         t = analiseType(lines[x])
-        # if t != -1
-        lineTypes.push t
-        resultLines.push lines[x]
+        if t != ignorableType
+            lineTypes.push t
+            resultLines.push lines[x]
 
     resultLines = processVariables(resultLines, lineTypes)
 
@@ -511,6 +518,7 @@ exports.christinizeFile = (chrisFilePath) ->
     sourceFile = fs.readFileSync(chrisFilePath, 'utf8')
     sourceFile = cleanUpFile(sourceFile)
 
+    chrisRootFolder = Path.dirname chrisFilePath
     christinizedFile = shtml(sourceFile)
     
     fs.writeFile('./' + chrisFilePath + '.html', christinizedFile)

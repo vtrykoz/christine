@@ -1,4 +1,4 @@
-var Path, analiseType, checkSelfClosing, chrisRootFolder, cleanUpFile, coffee, countSpaces, debugMode, formatHtml, formatProperty, formatString, formatStyleProperty, formatTag, formatVariable, fs, getHierarchy, headTagFilter, headTagType, headTags, loadChrisModule, moduleFilter, moduleType, processHead, processModules, processStyleTag, processTag, processVariables, scriptType, selfClosingTags, shtml, stringFilter, stringType, styleClassFilter, styleClassType, stylePropertyFilter, stylePropertyType, tagFilter, tagPropertyFilter, tagPropertyType, tagType, variableFilter, variableType;
+var Path, analiseType, checkSelfClosing, chrisRootFolder, cleanUpFile, coffee, commentFilter, countSpaces, debugMode, emptyFilter, formatHtml, formatProperty, formatString, formatStyleProperty, formatTag, formatVariable, fs, getHierarchy, headTagFilter, headTagType, headTags, ignorableType, loadChrisModule, moduleFilter, moduleType, processHead, processModules, processStyleTag, processTag, processVariables, scriptType, selfClosingTags, shtml, stringFilter, stringType, styleClassFilter, styleClassType, stylePropertyFilter, stylePropertyType, tagFilter, tagPropertyFilter, tagPropertyType, tagType, variableFilter, variableType;
 
 selfClosingTags = ['br', 'img', 'input', 'hr', 'meta', 'link'];
 
@@ -50,6 +50,12 @@ moduleType = 8;
 
 moduleFilter = /^\s*include\s*".+.chris"/i;
 
+ignorableType = -2;
+
+emptyFilter = /^[\W\s_]*$/;
+
+commentFilter = /^\s*#/i;
+
 countSpaces = function(l) {
   var x;
   x = 0;
@@ -64,6 +70,12 @@ countSpaces = function(l) {
 analiseType = function(l) {
   var ln;
   ln = -1;
+  if (commentFilter.test(l)) {
+    ln = ignorableType;
+  }
+  if (emptyFilter.test(l)) {
+    ln = ignorableType;
+  }
   if (stylePropertyFilter.test(l)) {
     ln = stylePropertyType;
   }
@@ -208,8 +220,10 @@ shtml = function(sourceText) {
   lines = processModules(lines, chrisRootFolder);
   for (x = _i = 0, _ref = lines.length; 0 <= _ref ? _i < _ref : _i > _ref; x = 0 <= _ref ? ++_i : --_i) {
     t = analiseType(lines[x]);
-    lineTypes.push(t);
-    resultLines.push(lines[x]);
+    if (t !== ignorableType) {
+      lineTypes.push(t);
+      resultLines.push(lines[x]);
+    }
   }
   resultLines = processVariables(resultLines, lineTypes);
   lineParents = getHierarchy(resultLines);
@@ -559,6 +573,7 @@ exports.christinizeFile = function(chrisFilePath) {
   var christinizedFile, sourceFile;
   sourceFile = fs.readFileSync(chrisFilePath, 'utf8');
   sourceFile = cleanUpFile(sourceFile);
+  chrisRootFolder = Path.dirname(chrisFilePath);
   christinizedFile = shtml(sourceFile);
   fs.writeFile('./' + chrisFilePath + '.html', christinizedFile);
   return christinizedFile;
