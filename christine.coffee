@@ -49,7 +49,7 @@ commentFilter       = /^\s*#/i
 
 countSpaces = (l) ->
     x = 0
-    if l[0] = " "
+    if l[0] == " "
         while l[x] == " "
             x+=1
     x
@@ -58,7 +58,7 @@ countSpaces = (l) ->
 
 analiseType = (l) ->
     ln = -1
-    
+
     ln = ignorableType if commentFilter.test l
     ln = ignorableType if emptyFilter.test l
     ln = stylePropertyType if stylePropertyFilter.test l
@@ -100,7 +100,7 @@ getHierarchy = (lines) ->
 
     lineParents
 
-    
+
 formatVariable = (l) ->
     exportArray = []
     varContent = ''
@@ -175,6 +175,17 @@ processModules = (ls, f) ->
 exports.christinize = (st) ->
     shtml(st)
 
+    
+cleanUpLines = (ls) ->
+    newLs = []
+    
+    for x in [0...ls.length]
+        if analiseType(ls[x]) != -2
+                newLs.push ls[x]
+          
+    newLs
+
+
 shtml = (sourceText) ->
 
     lines       = []
@@ -188,12 +199,14 @@ shtml = (sourceText) ->
 
     lines = processModules(lines, chrisRootFolder)
 
+
+    lines = cleanUpLines(lines, lineTypes)
+
     # process types and filter lines
     for x in [0...lines.length]
         t = analiseType(lines[x])
-        if t != ignorableType
-            lineTypes.push t
-            resultLines.push lines[x]
+        lineTypes.push t
+        resultLines.push lines[x]
 
     resultLines = processVariables(resultLines, lineTypes)
 
@@ -215,11 +228,11 @@ shtml = (sourceText) ->
 
 
 formatTag = (l) ->
-    
+
     # get rid of indentation
     sp = countSpaces l
     l = l.slice(sp)
-    
+
     tagArray = l.split ' '
     cleanTag = []
 
@@ -251,11 +264,11 @@ formatTag = (l) ->
 
 
 formatProperty = (l) ->
-    
+
     # get rid of indentation
     sp = countSpaces l
     l = l.slice(sp)
-    
+
     cleanProperty = '="'
     propertyNameSearch = /^\w+( *)?"/i
     t = l.match(propertyNameSearch)[0]
@@ -267,11 +280,11 @@ formatProperty = (l) ->
     cleanProperty
 
 formatStyleProperty = (l) ->
-    
+
     # get rid of indentation
     sp = countSpaces l
     l = l.slice(sp)
-    
+
     dividerPosition = l.indexOf ':'
     propertyAfter = l.slice (dividerPosition + 1)
     cleanStyleProperty = l.split(':')[0] + ':'
@@ -401,12 +414,11 @@ processTag = (tagLine, selfLink, childLines = [], childLinks, childTypes, lineNu
     # get rid of indentation
     sp = countSpaces tagLine
     tagLine = tagLine.slice(sp)
-    
+
     tagName = tagLine.split(' ')[0]
     finalTag = formatTag tagLine
     closable = checkSelfClosing(tagLine.split(' ')[0])
-    
-    console.log childLines
+
     # collect all the children
     tagProperties = []
     tagStyles     = []
@@ -481,8 +493,7 @@ processTag = (tagLine, selfLink, childLines = [], childLinks, childTypes, lineNu
                         p += 1
                     else
                         break
-                
-                console.log tagChildLines
+
 
                 finalTag += processTag(childLines[tl], lineNums[tl], tagChildLines, tagChildLinks, tagChildTypes, tagChildLineNums)
 
@@ -492,7 +503,6 @@ processTag = (tagLine, selfLink, childLines = [], childLinks, childTypes, lineNu
         for l in [0...childLines.length]
             scriptBefore += childLines[l] + '\n'
 
-        console.log scriptBefore
         finalTag = '<script>'
         tagName = 'script'
         finalTag += coffee.compile(scriptBefore)
@@ -520,7 +530,7 @@ exports.christinizeFile = (chrisFilePath) ->
 
     chrisRootFolder = Path.dirname chrisFilePath
     christinizedFile = shtml(sourceFile)
-    
+
     fs.writeFile('./' + chrisFilePath + '.html', christinizedFile)
     christinizedFile
 

@@ -1,4 +1,4 @@
-var Path, analiseType, checkSelfClosing, chrisRootFolder, cleanUpFile, coffee, commentFilter, countSpaces, debugMode, emptyFilter, formatHtml, formatProperty, formatString, formatStyleProperty, formatTag, formatVariable, fs, getHierarchy, headTagFilter, headTagType, headTags, ignorableType, loadChrisModule, moduleFilter, moduleType, processHead, processModules, processStyleTag, processTag, processVariables, scriptType, selfClosingTags, shtml, stringFilter, stringType, styleClassFilter, styleClassType, stylePropertyFilter, stylePropertyType, tagFilter, tagPropertyFilter, tagPropertyType, tagType, variableFilter, variableType;
+var Path, analiseType, checkSelfClosing, chrisRootFolder, cleanUpFile, cleanUpLines, coffee, commentFilter, countSpaces, debugMode, emptyFilter, formatHtml, formatProperty, formatString, formatStyleProperty, formatTag, formatVariable, fs, getHierarchy, headTagFilter, headTagType, headTags, ignorableType, loadChrisModule, moduleFilter, moduleType, processHead, processModules, processStyleTag, processTag, processVariables, scriptType, selfClosingTags, shtml, stringFilter, stringType, styleClassFilter, styleClassType, stylePropertyFilter, stylePropertyType, tagFilter, tagPropertyFilter, tagPropertyType, tagType, variableFilter, variableType;
 
 selfClosingTags = ['br', 'img', 'input', 'hr', 'meta', 'link'];
 
@@ -59,7 +59,7 @@ commentFilter = /^\s*#/i;
 countSpaces = function(l) {
   var x;
   x = 0;
-  if (l[0] = " ") {
+  if (l[0] === " ") {
     while (l[x] === " ") {
       x += 1;
     }
@@ -208,6 +208,17 @@ exports.christinize = function(st) {
   return shtml(st);
 };
 
+cleanUpLines = function(ls) {
+  var newLs, x, _i, _ref;
+  newLs = [];
+  for (x = _i = 0, _ref = ls.length; 0 <= _ref ? _i < _ref : _i > _ref; x = 0 <= _ref ? ++_i : --_i) {
+    if (analiseType(ls[x]) !== -2) {
+      newLs.push(ls[x]);
+    }
+  }
+  return newLs;
+};
+
 shtml = function(sourceText) {
   var lineNums, lineParents, lineTypes, lines, resultLines, resultText, t, x, _i, _j, _k, _ref, _ref1, _ref2;
   lines = [];
@@ -218,12 +229,11 @@ shtml = function(sourceText) {
   resultText = '';
   lines = sourceText.split('\n');
   lines = processModules(lines, chrisRootFolder);
+  lines = cleanUpLines(lines, lineTypes);
   for (x = _i = 0, _ref = lines.length; 0 <= _ref ? _i < _ref : _i > _ref; x = 0 <= _ref ? ++_i : --_i) {
     t = analiseType(lines[x]);
-    if (t !== ignorableType) {
-      lineTypes.push(t);
-      resultLines.push(lines[x]);
-    }
+    lineTypes.push(t);
+    resultLines.push(lines[x]);
   }
   resultLines = processVariables(resultLines, lineTypes);
   lineParents = getHierarchy(resultLines);
@@ -444,7 +454,6 @@ processTag = function(tagLine, selfLink, childLines, childLinks, childTypes, lin
   tagName = tagLine.split(' ')[0];
   finalTag = formatTag(tagLine);
   closable = checkSelfClosing(tagLine.split(' ')[0]);
-  console.log(childLines);
   tagProperties = [];
   tagStyles = [];
   childs = [];
@@ -535,7 +544,6 @@ processTag = function(tagLine, selfLink, childLines, childLinks, childTypes, lin
             break;
           }
         }
-        console.log(tagChildLines);
         finalTag += processTag(childLines[tl], lineNums[tl], tagChildLines, tagChildLinks, tagChildTypes, tagChildLineNums);
       }
       x += 1;
@@ -545,7 +553,6 @@ processTag = function(tagLine, selfLink, childLines, childLinks, childTypes, lin
     for (l = _l = 0, _ref3 = childLines.length; 0 <= _ref3 ? _l < _ref3 : _l > _ref3; l = 0 <= _ref3 ? ++_l : --_l) {
       scriptBefore += childLines[l] + '\n';
     }
-    console.log(scriptBefore);
     finalTag = '<script>';
     tagName = 'script';
     finalTag += coffee.compile(scriptBefore);
