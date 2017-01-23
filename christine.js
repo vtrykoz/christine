@@ -22,7 +22,7 @@ tagFilter = /^\s*\w+ *(( +\w+)?( *)?( +is( +.*)?)?)?$/i;
 
 tagPropertyType = 1;
 
-tagPropertyFilter = /^\s*\w+ *".*"/i;
+tagPropertyFilter = /^\s*[\w-]+ *".*"/i;
 
 styleClassType = 2;
 
