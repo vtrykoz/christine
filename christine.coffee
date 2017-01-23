@@ -270,7 +270,7 @@ formatProperty = (l) ->
     l = l.slice(sp)
 
     cleanProperty = '="'
-    propertyNameSearch = /^\w+( *)?"/i
+    propertyNameSearch = /^[\w-]+( *)?"/i
     t = l.match(propertyNameSearch)[0]
     t = t.split(" ")[0]
     t = t.split('"')[0]
