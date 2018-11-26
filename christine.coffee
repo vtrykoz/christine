@@ -17,7 +17,7 @@ tagType             = 0 #if no another type found and this is not a script
 tagFilter           = /^\s*\w+ *(( +\w+)?( *)?( +is( +.*)?)?)?$/i
 
 tagPropertyType     = 1 #if found property "something"
-tagPropertyFilter   = /^\s*[\w-]+ *".*"/i
+tagPropertyFilter   = /^\s*[\w\-]+ *".*"/
 
 styleClassType      = 2 #if this is tag and the tag is style
 styleClassFilter    = /^\s*(style|class)\s+[\w:_-]+/i
@@ -270,7 +270,7 @@ formatProperty = (l) ->
     l = l.slice(sp)
 
     cleanProperty = '="'
-    propertyNameSearch = /^[\w-]+( *)?"/i
+    propertyNameSearch = /^[\w\-]+( *)?"/i
     t = l.match(propertyNameSearch)[0]
     t = t.split(" ")[0]
     t = t.split('"')[0]
