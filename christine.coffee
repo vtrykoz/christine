@@ -150,23 +150,23 @@ loadChrisModule = (moduleFilePath) ->
     mls
 
 processModules = (ls, f) ->
-    resultLs = []
     moduleLevelFilter = /^\s*/
 
-    for x in [0...ls.length]
-        if moduleFilter.test ls[x]
-            chrisModulePath = ls[x].split('"')[1]
-            moduleLines = loadChrisModule(f + '/' + chrisModulePath)
+    for l in ls.sourceLines
+        if moduleFilter.test l
+            chrisModulePath = l.split('"')[1]
+            moduleLines = 
+                sourceLines : loadChrisModule(f + '/' + chrisModulePath)
 
-            moduleLevel = moduleLevelFilter.exec(ls[x])
-            moduleLines[l] = moduleLevel + moduleLines[l] for l in [0...moduleLines.length]
+            moduleLevel = moduleLevelFilter.exec(l)
+            moduleLines.sourceLines.push moduleLevel + moduleLine for moduleLine in moduleLines
 
-            moduleLines = processModules(moduleLines, path.dirname(f + '/' + chrisModulePath))
-            resultLs = resultLs.concat(moduleLines)
+            moduleLines.sourceLines = processModules(moduleLines.sourceLines, path.dirname(f + '/' + chrisModulePath))
+            resultLs = resultLs.concat(moduleLines.sourceLines)
         else
             resultLs.push ls[x]
 
-    resultLs
+    ls.sourceLines = resultLs
 
 
 
@@ -187,20 +187,26 @@ cleanUpLines = (ls) ->
 
 
 shtml = (sourceText) ->
+    chrisFile =
+        sourceLines : []
+        lines : []
+    
+    linePrototype =
+        source : ''
+        final : ''
+        type : -1
+        parent : {}
+        children : []
+        number : -1
+        indent : 0
+    
 
-    lines       = []
-    resultLines = []
-    lineTypes   = []
-    lineParents = []
-    lineNums    = []
-    resultText  = ''
+    chrisFile.sourceLines = sourceText.split '\n'
 
-    lines = sourceText.split '\n'
-
-    lines = processModules(lines, chrisRootFolder)
+    chrisFile.sourceLines = processModules(chrisFile, chrisRootFolder)
 
 
-    lines = cleanUpLines(lines, lineTypes)
+    chrisFile.sourceLines = cleanUpLines(lines, lineTypes)
 
     # process types and filter lines
     for x in [0...lines.length]

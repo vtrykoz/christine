@@ -1,0 +1,14 @@
+background : #f2f2f2
+
+textarea test
+
+button testButton
+    "Hit that!"
+
+
+script
+    src "christine2.js"
+
+coffeescript
+    testButton.addEventListener 'click', () ->
+        shtml test.value
