@@ -11,4 +11,4 @@ script
 
 coffeescript
     testButton.addEventListener 'click', () ->
-        shtml test.value
+        christine.christinize test.value
