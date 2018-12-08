@@ -48,6 +48,7 @@ commentFilter       = /^\s*#/i
         chrisFile.source = cleanupLines sourceText.split '\n'
 
         processHierarchy chrisFile
+        processTypes chrisFile.inProgressLines
 
         console.log chrisFile
 
@@ -99,7 +100,7 @@ processHierarchy = (file) ->
         lineLevel = countSpaces file.source[line]
 
         if lineLevel >= currentParent.level
-            if lineLevel > currentParent.level
+            if lineLevel > currentChild.level
                 currentParent = currentChild
 
             newLine =
@@ -124,4 +125,15 @@ processHierarchy = (file) ->
             currentParent.children.push newLine
             currentChild = newLine
 
+
+
+processTypes = (lines) ->
+    for line in lines.children
+        if line.source
+            line.type = analiseType line.source
+        else
+            line.type = -2
+
+        if line.children.length > 0
+            processTypes line
 
