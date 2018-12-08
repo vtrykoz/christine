@@ -104,7 +104,7 @@ processHierarchy = (file) ->
                 currentParent = currentChild
 
             newLine =
-                source : file.source[line]
+                source : file.source[line].slice lineLevel
                 children : []
                 parent : currentParent
                 level : lineLevel
@@ -117,7 +117,7 @@ processHierarchy = (file) ->
                 currentParent = currentParent.parent
 
             newLine =
-                source : file.source[line]
+                source : file.source[line].slice lineLevel
                 children : []
                 parent : currentParent
                 level : lineLevel
