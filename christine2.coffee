@@ -40,6 +40,8 @@ commentFilter       = /^\s*#/i
             inProgressLines : 
                 level : -1
                 children : []
+                source : 'html'
+                type : 0
 
             final : ''
         
@@ -50,6 +52,10 @@ commentFilter       = /^\s*#/i
         processHierarchy chrisFile
         processTypes chrisFile.inProgressLines
         sortByTypes chrisFile.inProgressLines
+        finaliseTag chrisFile.inProgressLines
+
+        console.log chrisFile.inProgressLines.final
+        chrisFile.final = chrisFile.inProgressLines.final
 
         console.log chrisFile
 
@@ -166,12 +172,40 @@ sortByTypes = (lines) ->
             lines.children[line].parent.children.splice line , 1
 
             continue
-        
-        if lines.children[line].type == stringType
-            if !lines.children[line].parent.strings
-                lines.children[line].parent.strings = new Array
-            
-            lines.children[line].parent.strings.push lines.children[line]
-            lines.children[line].parent.children.splice line , 1
 
-            continue
+
+finaliseTag = (line) ->
+    addSpaces = ''
+    if line.level > 0
+        addSpaces += ' ' for i in [0..line.level]
+
+
+    if line.type == 0
+        line.final = addSpaces + '<' + line.source
+
+        if line.styles
+            line.final += ' style="'
+            for style in line.styles
+                line.final += style.source + ';'
+
+            line.final += '"'
+        
+        if line.properties
+            for property in line.properties
+                line.final += property + ' '
+        
+        line.final += '>\n'
+
+        if line.children.length > 0
+            for child in line.children
+                finaliseTag child
+            
+            for child in line.children
+                line.final += child.final
+        
+        line.final += addSpaces + '</' + line.source + '>\n'
+    
+    else
+        line.final = addSpaces + line.source + '\n'
+    
+    
