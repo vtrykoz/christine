@@ -49,6 +49,7 @@ commentFilter       = /^\s*#/i
 
         processHierarchy chrisFile
         processTypes chrisFile.inProgressLines
+        sortByTypes chrisFile.inProgressLines
 
         console.log chrisFile
 
@@ -133,7 +134,44 @@ processTypes = (lines) ->
             line.type = analiseType line.source
         else
             line.type = -2
-
+        
         if line.children.length > 0
             processTypes line
 
+
+
+sortByTypes = (lines) ->
+    # extract the styles, properties and strings to their parents
+
+    lastChild = lines.children.length - 1
+
+    for line in [lastChild..0]
+        if lines.children[line].children.length > 0
+            sortByTypes lines.children[line]
+
+        if lines.children[line].type == tagPropertyType
+            if !lines.children[line].parent.properties
+                lines.children[line].parent.properties = new Array
+            
+            lines.children[line].parent.properties.push lines.children[line]
+            lines.children[line].parent.children.splice line , 1
+
+            continue
+        
+        if lines.children[line].type == stylePropertyType
+            if !lines.children[line].parent.styles
+                lines.children[line].parent.styles = new Array
+            
+            lines.children[line].parent.styles.push lines.children[line]
+            lines.children[line].parent.children.splice line , 1
+
+            continue
+        
+        if lines.children[line].type == stringType
+            if !lines.children[line].parent.strings
+                lines.children[line].parent.strings = new Array
+            
+            lines.children[line].parent.strings.push lines.children[line]
+            lines.children[line].parent.children.splice line , 1
+
+            continue
