@@ -18,4 +18,4 @@ script
 
 coffeescript
     testButton.addEventListener 'click', () ->
-        christine.christinize test.value, 4
+        exports.christinize test.value, 4

@@ -1,3 +1,7 @@
+fs = require 'fs'
+Path = require 'path'
+coffee = require 'coffee-script'
+
 # LINE TYPES
 
 selfClosingTags = ['br', 'img', 'input', 'hr', 'meta', 'link']
@@ -42,47 +46,75 @@ commentFilter       = /^\s*#/i
 
 
 
-@christine =
-    christinize : (sourceText, indent) ->
-        chrisFile =
-            source : []
-            inProgressLines : 
-                level : -1
-                children : []
-                source : 'html'
-                type : 0
-                properties : []
-                styles : []
-                indent : indent
+exports.christinize = (sourceText, indent) ->
+    chrisFile =
+        source : []
+        inProgressLines : 
+            level : -1
+            children : []
+            source : 'html'
+            type : 0
+            properties : []
+            styles : []
+            indent : indent
 
-            final : ''
-        
+        final : ''
+    
 
-        chrisFile.inProgressLines.parent = chrisFile.inProgressLines
+    chrisFile.inProgressLines.parent = chrisFile.inProgressLines
 
-        chrisFile.source = cleanupLines sourceText.split '\n'
+    chrisFile.source = cleanupLines sourceText.split '\n'
 
-        processHierarchy chrisFile
+    chrisFile.source = processModules chrisFile.source, ''
 
-        processTypes chrisFile.inProgressLines
+    console.log "hey!"
+    console.log chrisFile.source
 
-        sortByTypes chrisFile.inProgressLines
-        console.log chrisFile.inProgressLines
+    processHierarchy chrisFile
 
-        sortByBodyHead chrisFile
+    processTypes chrisFile.inProgressLines
 
-        finaliseTag chrisFile.inProgressLines
+    sortByTypes chrisFile.inProgressLines
 
-        
-        doctype = '<!doctype html>'
-        doctype += '\n' if indent
+    sortByBodyHead chrisFile
 
-        chrisFile.final = doctype + chrisFile.inProgressLines.final
+    finaliseTag chrisFile.inProgressLines
 
-        console.log chrisFile.final
-        console.log chrisFile
-        chrisFile
+    
+    doctype = '<!doctype html>'
+    doctype += '\n' if indent
 
+    chrisFile.final = doctype + chrisFile.inProgressLines.final
+
+    console.log chrisFile.final
+    console.log chrisFile
+    chrisFile
+
+
+loadChrisModule = (moduleFilePath) ->
+    msls = fs.readFileSync('./' + moduleFilePath, 'utf8')
+    msls = cleanupLines(msls.split '\n')
+    msls
+
+processModules = (ls, f) ->
+    resultLs = new Array
+    moduleLevelFilter = /^\s*/
+
+    for x in [0...ls.length]
+        if moduleFilter.test ls[x]
+            chrisModulePath = ls[x].split('"')[1]
+            moduleLines = loadChrisModule(f + '/' + chrisModulePath)
+
+            moduleLevel = moduleLevelFilter.exec(ls[x])
+            moduleLines[l] = moduleLevel + moduleLines[l] for l in [0...moduleLines.length]
+
+            moduleLines = processModules(moduleLines, path.dirname(f + '/' + chrisModulePath))
+            resultLs = resultLs.concat(moduleLines)
+        else
+            resultLs.push ls[x]
+
+    resultLs
+            
 
 
 sortByBodyHead = (file) ->
@@ -122,12 +154,15 @@ sortByBodyHead = (file) ->
         for headTagTemplate in headTags
             if tag.source == headTagTemplate
                 addedToHead = true
+                tag.parent = headTag
                 headTag.children.push tag
 
         if not addedToHead
             if tag.type == styleClassType
+                tag.parent = styleTag
                 styleTag.children.push tag
             else
+                tag.parent = bodyTag
                 bodyTag.children.push tag
 
     bodyTag.styles = file.inProgressLines.styles
