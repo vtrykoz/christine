@@ -220,6 +220,10 @@ finaliseTag = (line) ->
             lineStyle += '"'
             line.properties.push lineStyle
         
+
+        formatProperties line
+        
+
         if line.properties.length > 0
             line.final += ' '
             for property in line.properties
@@ -265,3 +269,26 @@ formatTag = (tag) ->
             tag.properties.push tagClasses
     
     tag
+
+
+formatProperties = (tag) ->
+    if tag.properties.length > 0
+        newProperties = new Array
+
+        for property in tag.properties
+            newProperty = '='
+
+            propertyNameSearch = /^[\w\-]+( *)?"/i
+            propertyName = property.match(propertyNameSearch)[0]
+            propertyName = propertyName.split(" ")[0]
+            propertyName = propertyName.split('"')[0]
+
+            newProperty = propertyName + newProperty
+
+            propertyDetailsSearch = /\".*\"/
+            propertyDetails = property.match(propertyDetailsSearch)[0]
+            newProperty += propertyDetails
+
+            newProperties.push newProperty
+
+        tag.properties = newProperties
