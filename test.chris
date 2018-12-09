@@ -1,6 +1,8 @@
 background : #f2f2f2
 
 textarea test
+    font-family: 'Menlo'
+    font-size : 15px
 
 button testButton
     "Hit that!"

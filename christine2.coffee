@@ -45,7 +45,7 @@ commentFilter       = /^\s*#/i
         chrisFile =
             source : []
             inProgressLines : 
-                level : -1
+                level : -2
                 children : []
                 source : 'html'
                 type : 0
@@ -54,6 +54,27 @@ commentFilter       = /^\s*#/i
 
             final : ''
         
+        headTag =
+            level : -1
+            parent : chrisFile.inProgressLines
+            children : []
+            source : 'head'
+            type : 0
+            properties : []
+            styles : []
+
+        bodyTag =
+            level : -1
+            parent : chrisFile.inProgressLines
+            children : []
+            source : 'body'
+            type : 0
+            properties : []
+            styles : []
+        
+        chrisFile.inProgressLines.children.push headTag
+        chrisFile.inProgressLines.children.push bodyTag
+
         chrisFile.inProgressLines.parent = chrisFile.inProgressLines
 
         chrisFile.source = cleanupLines sourceText.split '\n'
@@ -61,6 +82,7 @@ commentFilter       = /^\s*#/i
         processHierarchy chrisFile
         processTypes chrisFile.inProgressLines
         sortByTypes chrisFile.inProgressLines
+
         finaliseTag chrisFile.inProgressLines
 
         console.log chrisFile.inProgressLines.final
@@ -126,9 +148,9 @@ processHierarchy = (file) ->
     for line in [0...file.source.length]
         lineLevel = countSpaces file.source[line]
 
-        if lineLevel >= currentParent.level
+        if lineLevel > currentParent.level
             if lineLevel > currentChild.level
-                currentParent = currentChild
+               currentParent = currentChild
 
             newLine =
                 source : file.source[line].slice lineLevel
@@ -187,7 +209,7 @@ sortByTypes = (lines) ->
             if !lines.children[line].parent.properties
                 lines.children[line].parent.properties = new Array
             
-            lines.children[line].parent.properties.push lines.children[line]
+            lines.children[line].parent.properties.push lines.children[line].source
             lines.children[line].parent.children.splice line , 1
 
             continue
@@ -196,7 +218,7 @@ sortByTypes = (lines) ->
             if !lines.children[line].parent.styles
                 lines.children[line].parent.styles = new Array
             
-            lines.children[line].parent.styles.push lines.children[line]
+            lines.children[line].parent.styles.push lines.children[line].source
             lines.children[line].parent.children.splice line , 1
 
             continue
@@ -214,8 +236,11 @@ finaliseTag = (line) ->
 
         if line.styles.length > 0
             lineStyle = 'style "'
+
+            formatTagStyles line 
+
             for style in line.styles
-                lineStyle += style.source + ';'
+                lineStyle += style + ';'
 
             lineStyle += '"'
             line.properties.push lineStyle
@@ -234,22 +259,28 @@ finaliseTag = (line) ->
 
 
         if line.children.length > 0
+            formatStrings line
+
             for child in line.children
                 finaliseTag child
             
             for child in line.children
                 line.final += child.final
         
-        line.final += addSpaces + '</' + line.source + '>\n'
+        if not line.selfClosing
+            line.final += addSpaces + '</' + line.source + '>\n'
     
-    else
-        line.final = addSpaces + line.source + '\n'
     
     
 formatTag = (tag) ->
     tagArray = tag.source.split /\s+/
     tag.source = tagArray[0]
-    console.log tag.source
+
+    tag.selfClosing = false
+    for selfClosingTag in selfClosingTags
+        if tag.source == selfClosingTag
+            tag.selfClosing = true
+
     tagArray.splice(0,1)
 
     if tagArray.length > 0
@@ -272,6 +303,7 @@ formatTag = (tag) ->
 
 
 formatProperties = (tag) ->
+    console.log tag
     if tag.properties.length > 0
         newProperties = new Array
 
@@ -292,3 +324,33 @@ formatProperties = (tag) ->
             newProperties.push newProperty
 
         tag.properties = newProperties
+
+
+formatStrings = (tag) ->
+    
+    for child in tag.children
+        addSpaces = ''
+
+        if child.level > 0
+            addSpaces += ' ' for i in [0..child.level]
+
+        if child.type == stringType
+            fullStringSearch = /\".*\"/
+            cleanString = child.source.match(fullStringSearch)[0]
+            cleanString = cleanString.slice 1, -1
+            child.final = addSpaces + cleanString + "\n"
+
+
+formatTagStyles = (tag) ->
+    for style in tag.styles
+        dividerPosition = style.indexOf ':'
+        propertyAfter = style.slice (dividerPosition + 1)
+        cleanStyleProperty = style.split(':')[0] + ':'
+        afterArray = propertyAfter.split ' '
+
+        for x in [0...afterArray.length]
+            if afterArray[x] != ''
+                cleanStyleProperty += afterArray[x]
+                cleanStyleProperty += ' ' if x < afterArray.length - 1
+
+        style = cleanStyleProperty
