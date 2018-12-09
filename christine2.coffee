@@ -18,7 +18,9 @@ stylePropertyFilter = /^\s*[^"' ]+ *: *.*/i
 stringType          = 4 #if found "string"
 stringFilter        = /^\s*".*"/i
 
+scriptTagFilter     = /^\s*(script|coffeescript|javascript|coffee)/i
 scriptType          = 5 #if it is under the script tag
+scriptTagType       = 9
 
 variableType        = 6 # if found name = something
 variableFilter      = /^\s*\w+\s*=\s*[\w\W]+/i
@@ -156,7 +158,12 @@ analiseType = (line) ->
     lineType = ignorableType if commentFilter.test line
     lineType = ignorableType if emptyFilter.test line
     lineType = stylePropertyType if stylePropertyFilter.test line
-    lineType = tagType if tagFilter.test line
+    if tagFilter.test line
+        lineType = tagType 
+        if scriptTagFilter.test line
+            lineType = scriptTagType
+            console.log "script detected"
+
     # lineType = headTagType if headTagFilter.test line
     lineType = styleClassType if styleClassFilter.test line
     lineType = tagPropertyType if tagPropertyFilter.test line
@@ -240,6 +247,10 @@ processTypes = (lines) ->
 sortByTypes = (lines) ->
     # extract the styles, properties and strings to their parents
 
+    for line in lines.children
+        if line.type == scriptTagType
+            typeAllScripts line
+
     lastChild = lines.children.length - 1
 
     for line in [lastChild..0]
@@ -265,17 +276,25 @@ sortByTypes = (lines) ->
             continue
 
 
+typeAllScripts = (scriptLine) ->
+    console.log scriptLine
+    if scriptLine.children.length > 0
+        for codeLine in scriptLine.children
+            codeLine.type = 5
+            codeLine.final = codeLine.source
+            typeAllScripts(codeLine) if codeLine.children.length > 0
+
+
 finaliseTag = (line) ->
     addSpaces = ''
-    if line.indentation > 0
-        addSpaces += ' ' for i in [0..line.indentation]
+    if line.indent > 0
+        addSpaces += ' ' for i in [0...line.indent]
 
 
-    if line.type == 0
-        console.log line
+    if line.type == 0 or line.type == 9
         formatTag line
 
-        line.final = addSpaces + '<' + line.source
+        line.final = '<' + line.source
 
         if line.styles.length > 0
             lineStyle = 'style "'
@@ -305,15 +324,34 @@ finaliseTag = (line) ->
         if line.children.length > 0
             formatStrings line
 
+            if line.type == scriptTagType
+                line.indent = 4
+
+            formatScripts line
+
             for child in line.children
                 finaliseTag child
             
             for child in line.children
+                childLines = child.final.split '\n'
+                newFinal = ''
+                console.log childLines
+                for l in childLines
+                    if l.length > 0
+                        l = addSpaces + l
+                        newFinal += l + '\n'
+                
+                newFinal += '\n' if line.indent > 0
+                
+                newFinal = newFinal.slice 0, -1
+                child.final = newFinal
+
                 line.final += child.final
+            
         
         if not line.selfClosing
-            line.final += addSpaces + '</' + line.source + '>'
-            line.final += '\n' if line.indent > 0
+            line.final += '</' + line.source + '>'
+            #line.final += '\n' if line.indent > 0
     
     
     
@@ -374,17 +412,46 @@ formatProperties = (tag) ->
 formatStrings = (tag) ->
     
     for child in tag.children
-        addSpaces = ''
-
-        if child.indentation > 0
-            addSpaces += ' ' for i in [0..child.indentation]
 
         if child.type == stringType
             fullStringSearch = /\".*\"/
             cleanString = child.source.match(fullStringSearch)[0]
             cleanString = cleanString.slice 1, -1
-            child.final = addSpaces + cleanString
+            child.final = cleanString
             child.final += '\n' if child.indent > 0 + "\n"
+
+
+
+
+formatScripts = (tag) ->
+    indentLines tag
+
+    for child in tag.children
+        addSpaces = ''
+
+        if child.indent > 0
+            addSpaces += ' ' for i in [0...child.indent]
+        
+        if child.type == scriptType
+
+            if child.children.length > 0
+                child.final += '\n'
+                formatScripts child
+
+                for scriptChildLine in child.children
+                    scriptChildSliced = scriptChildLine.final.split '\n'
+                    scriptChildSliced.pop()
+                    newScriptChildFinal = ''
+                    for i in scriptChildSliced
+                        newScriptChildFinal += addSpaces + i + '\n'
+                    scriptChildLine.final = newScriptChildFinal
+
+                    child.final += scriptChildLine.final
+                child.final = child.final.slice 0, -1
+                
+            child.final += '\n'
+
+
 
 
 formatTagStyles = (tag) ->
