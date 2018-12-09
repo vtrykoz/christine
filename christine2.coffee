@@ -1,7 +1,7 @@
 # LINE TYPES
 
 selfClosingTags = ['br', 'img', 'input', 'hr', 'meta', 'link']
-headTags = ['meta', 'title', 'style', 'class', 'link']
+headTags = ['meta', 'title', 'style', 'class', 'link', 'base']
 
 tagType             = 0 #if no another type found and this is not a script
 tagFilter           = /^\s*\w+ *(( +\w+)?( *)?( +is( +.*)?)?)?$/i
@@ -61,26 +61,24 @@ commentFilter       = /^\s*#/i
         chrisFile.source = cleanupLines sourceText.split '\n'
 
         processHierarchy chrisFile
-        console.log 'hierarchy processed'
 
         processTypes chrisFile.inProgressLines
-        console.log 'types processed'
 
         sortByTypes chrisFile.inProgressLines
-        console.log 'type sorted'
 
         sortByBodyHead chrisFile
-        console.log 'body / head sorted'
-
-        console.log chrisFile.inProgressLines
 
         finaliseTag chrisFile.inProgressLines
-        console.log 'tags finalized'
 
-        console.log chrisFile.inProgressLines.final
-        chrisFile.final = '<1doctype html>' + chrisFile.inProgressLines.final
+        
+        doctype = '<!doctype html>'
+        doctype += '\n' if indent
 
+        chrisFile.final = doctype + chrisFile.inProgressLines.final
+
+        console.log chrisFile.final
         console.log chrisFile
+        chrisFile
 
 
 
@@ -116,7 +114,11 @@ sortByBodyHead = (file) ->
         if not addedToHead
             bodyTag.children.push tag
 
-    console.log file.inProgressLines.children
+    bodyTag.styles = file.inProgressLines.styles
+    bodyTag.properties = file.inProgressLines.properties
+
+    file.inProgressLines.styles = new Array
+    file.inProgressLines.properties = new Array
     file.inProgressLines.children = new Array
 
     file.inProgressLines.children.push headTag
@@ -155,7 +157,7 @@ analiseType = (line) ->
     lineType = ignorableType if emptyFilter.test line
     lineType = stylePropertyType if stylePropertyFilter.test line
     lineType = tagType if tagFilter.test line
-    lineType = headTagType if headTagFilter.test line
+    # lineType = headTagType if headTagFilter.test line
     lineType = styleClassType if styleClassFilter.test line
     lineType = tagPropertyType if tagPropertyFilter.test line
     lineType = stringType if stringFilter.test line
@@ -270,7 +272,9 @@ finaliseTag = (line) ->
 
 
     if line.type == 0
+        console.log line
         formatTag line
+
         line.final = addSpaces + '<' + line.source
 
         if line.styles.length > 0
@@ -339,7 +343,8 @@ formatTag = (tag) ->
             tagClasses += '"'
 
             tag.properties.push tagClasses
-    
+
+    tag.final = ''
     tag
 
 
