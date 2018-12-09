@@ -67,6 +67,7 @@ commentFilter       = /^\s*#/i
         processTypes chrisFile.inProgressLines
 
         sortByTypes chrisFile.inProgressLines
+        console.log chrisFile.inProgressLines
 
         sortByBodyHead chrisFile
 
@@ -84,23 +85,33 @@ commentFilter       = /^\s*#/i
 
 
 
-
 sortByBodyHead = (file) ->
     headTag =
         level : -1
         parent: file.inProgressLines
         children : []
         source : 'head'
-        type : 0
+        type : tagType
         properties : []
         styles : []
+    
+    styleTag =
+        level : 0
+        parent: headTag
+        children : []
+        source : 'style'
+        type : headTagType
+        properties : []
+        styles : []
+
+    headTag.children.push styleTag
 
     bodyTag =
         level : -1
         parent: file.inProgressLines
         children : []
         source : 'body'
-        type : 0
+        type : tagType
         properties : []
         styles : []
     
@@ -114,7 +125,10 @@ sortByBodyHead = (file) ->
                 headTag.children.push tag
 
         if not addedToHead
-            bodyTag.children.push tag
+            if tag.type == styleClassType
+                styleTag.children.push tag
+            else
+                bodyTag.children.push tag
 
     bodyTag.styles = file.inProgressLines.styles
     bodyTag.properties = file.inProgressLines.properties
@@ -162,9 +176,8 @@ analiseType = (line) ->
         lineType = tagType 
         if scriptTagFilter.test line
             lineType = scriptTagType
-            console.log "script detected"
 
-    # lineType = headTagType if headTagFilter.test line
+    lineType = headTagType if headTagFilter.test line
     lineType = styleClassType if styleClassFilter.test line
     lineType = tagPropertyType if tagPropertyFilter.test line
     lineType = stringType if stringFilter.test line
@@ -244,6 +257,9 @@ processTypes = (lines) ->
 
 
 
+
+
+
 sortByTypes = (lines) ->
     # extract the styles, properties and strings to their parents
 
@@ -276,8 +292,11 @@ sortByTypes = (lines) ->
             continue
 
 
+
+
+
+
 typeAllScripts = (scriptLine) ->
-    console.log scriptLine
     if scriptLine.children.length > 0
         for codeLine in scriptLine.children
             codeLine.type = 5
@@ -285,13 +304,18 @@ typeAllScripts = (scriptLine) ->
             typeAllScripts(codeLine) if codeLine.children.length > 0
 
 
+
+
+
 finaliseTag = (line) ->
     addSpaces = ''
     if line.indent > 0
         addSpaces += ' ' for i in [0...line.indent]
 
+    if line.type == styleClassType
+        finaliseStyle line
 
-    if line.type == 0 or line.type == 9
+    if line.type == 0 or line.type == 9 or line.type == headTagType
         formatTag line
 
         line.final = '<' + line.source
@@ -335,7 +359,7 @@ finaliseTag = (line) ->
             for child in line.children
                 childLines = child.final.split '\n'
                 newFinal = ''
-                console.log childLines
+                
                 for l in childLines
                     if l.length > 0
                         l = addSpaces + l
@@ -353,7 +377,46 @@ finaliseTag = (line) ->
             line.final += '</' + line.source + '>'
             #line.final += '\n' if line.indent > 0
     
+
+
+
+finaliseStyle = (styleTag) ->
+    addSpaces = ''
+    if styleTag.indent > 0
+        addSpaces += ' ' for i in [0...styleTag.indent]
+
+    finalTag = '#'
+
+    tagArray = styleTag.source.split ' '
+
+    finalTag = '.' if tagArray[0] == 'class'
+
+    if tagArray[1] == 'tag'
+        finalTag = ''
+        finalTag += tagArray[2]
+    else
+        finalTag += tagArray[1]
+
+    finalTag += '{'
     
+    formatTagStyles styleTag
+
+    for style in styleTag.styles
+        if styleTag.indent > 0
+            finalTag += '\n'
+            finalTag += addSpaces
+
+        finalTag += style
+    
+    if styleTag.indent > 0
+        finalTag += '\n'
+
+    finalTag += '}'
+    styleTag.final = finalTag
+
+
+
+
     
 formatTag = (tag) ->
     tagArray = tag.source.split /\s+/
