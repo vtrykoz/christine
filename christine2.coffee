@@ -1,5 +1,8 @@
 # LINE TYPES
 
+selfClosingTags = ['br', 'img', 'input', 'hr', 'meta', 'link']
+headTags = ['meta', 'title', 'style', 'class', 'link']
+
 tagType             = 0 #if no another type found and this is not a script
 tagFilter           = /^\s*\w+ *(( +\w+)?( *)?( +is( +.*)?)?)?$/i
 
@@ -33,6 +36,10 @@ commentFilter       = /^\s*#/i
 
 
 
+
+
+
+
 @christine =
     christinize : (sourceText) ->
         chrisFile =
@@ -42,6 +49,8 @@ commentFilter       = /^\s*#/i
                 children : []
                 source : 'html'
                 type : 0
+                properties : []
+                styles : []
 
             final : ''
         
@@ -58,6 +67,13 @@ commentFilter       = /^\s*#/i
         chrisFile.final = chrisFile.inProgressLines.final
 
         console.log chrisFile
+
+
+
+
+
+
+
 
 
 cleanupLines = (sourceLines) ->
@@ -99,6 +115,10 @@ countSpaces = (line) ->
     spaces
 
 
+
+
+
+
 processHierarchy = (file) ->
     currentParent = file.inProgressLines
     currentChild = file.inProgressLines
@@ -115,6 +135,8 @@ processHierarchy = (file) ->
                 children : []
                 parent : currentParent
                 level : lineLevel
+                properties : []
+                styles : []
 
             currentParent.children.push newLine
             currentChild = newLine
@@ -128,9 +150,15 @@ processHierarchy = (file) ->
                 children : []
                 parent : currentParent
                 level : lineLevel
+                properties : []
+                styles : []
 
             currentParent.children.push newLine
             currentChild = newLine
+
+
+
+
 
 
 
@@ -181,20 +209,25 @@ finaliseTag = (line) ->
 
 
     if line.type == 0
+        formatTag line
         line.final = addSpaces + '<' + line.source
 
-        if line.styles
-            line.final += ' style="'
+        if line.styles.length > 0
+            lineStyle = 'style "'
             for style in line.styles
-                line.final += style.source + ';'
+                lineStyle += style.source + ';'
 
-            line.final += '"'
+            lineStyle += '"'
+            line.properties.push lineStyle
         
-        if line.properties
+        if line.properties.length > 0
+            line.final += ' '
             for property in line.properties
                 line.final += property + ' '
         
+            line.final = line.final.slice 0, -1
         line.final += '>\n'
+
 
         if line.children.length > 0
             for child in line.children
@@ -209,3 +242,26 @@ finaliseTag = (line) ->
         line.final = addSpaces + line.source + '\n'
     
     
+formatTag = (tag) ->
+    tagArray = tag.source.split /\s+/
+    tag.source = tagArray[0]
+    console.log tag.source
+    tagArray.splice(0,1)
+
+    if tagArray.length > 0
+        if tagArray[0] != 'is'
+            tag.properties.push 'id "' + tagArray[0] + '"'
+            tagArray.splice(0,1)
+        
+        if tagArray[0] == 'is'
+            tagArray.splice(0,1)
+            tagClasses = 'class "'
+            for tagClass in tagArray
+                tagClasses += tagClass + ' '
+            
+            tagClasses = tagClasses.slice 0, -1
+            tagClasses += '"'
+
+            tag.properties.push tagClasses
+    
+    tag
