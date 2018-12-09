@@ -13,4 +13,4 @@ script
 
 coffeescript
     testButton.addEventListener 'click', () ->
-        christine.christinize test.value
+        christine.christinize test.value, 4

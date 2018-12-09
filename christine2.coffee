@@ -41,59 +41,99 @@ commentFilter       = /^\s*#/i
 
 
 @christine =
-    christinize : (sourceText) ->
+    christinize : (sourceText, indent) ->
         chrisFile =
             source : []
             inProgressLines : 
-                level : -2
+                level : -1
                 children : []
                 source : 'html'
                 type : 0
                 properties : []
                 styles : []
+                indent : indent
 
             final : ''
         
-        headTag =
-            level : -1
-            parent : chrisFile.inProgressLines
-            children : []
-            source : 'head'
-            type : 0
-            properties : []
-            styles : []
-
-        bodyTag =
-            level : -1
-            parent : chrisFile.inProgressLines
-            children : []
-            source : 'body'
-            type : 0
-            properties : []
-            styles : []
-        
-        chrisFile.inProgressLines.children.push headTag
-        chrisFile.inProgressLines.children.push bodyTag
 
         chrisFile.inProgressLines.parent = chrisFile.inProgressLines
 
         chrisFile.source = cleanupLines sourceText.split '\n'
 
         processHierarchy chrisFile
+        console.log 'hierarchy processed'
+
         processTypes chrisFile.inProgressLines
+        console.log 'types processed'
+
         sortByTypes chrisFile.inProgressLines
+        console.log 'type sorted'
+
+        sortByBodyHead chrisFile
+        console.log 'body / head sorted'
+
+        console.log chrisFile.inProgressLines
 
         finaliseTag chrisFile.inProgressLines
+        console.log 'tags finalized'
 
         console.log chrisFile.inProgressLines.final
-        chrisFile.final = chrisFile.inProgressLines.final
+        chrisFile.final = '<1doctype html>' + chrisFile.inProgressLines.final
 
         console.log chrisFile
 
 
 
 
+sortByBodyHead = (file) ->
+    headTag =
+        level : -1
+        parent: file.inProgressLines
+        children : []
+        source : 'head'
+        type : 0
+        properties : []
+        styles : []
 
+    bodyTag =
+        level : -1
+        parent: file.inProgressLines
+        children : []
+        source : 'body'
+        type : 0
+        properties : []
+        styles : []
+    
+
+    for tag in file.inProgressLines.children
+        addedToHead = false
+
+        for headTagTemplate in headTags
+            if tag.source == headTagTemplate
+                addedToHead = true
+                headTag.children.push tag
+
+        if not addedToHead
+            bodyTag.children.push tag
+
+    console.log file.inProgressLines.children
+    file.inProgressLines.children = new Array
+
+    file.inProgressLines.children.push headTag
+    file.inProgressLines.children.push bodyTag
+
+    formatLevels file.inProgressLines
+    indentLines file.inProgressLines
+
+
+
+indentLines = (tag) ->
+    for child in tag.children
+        child.indentation = child.level * tag.indent
+        child.indent = tag.indent
+
+        if child.children
+            indentLines child
 
 
 
@@ -103,7 +143,6 @@ cleanupLines = (sourceLines) ->
 
     for line in sourceLines
         if analiseType(line) != -2
-            console.log "pushing line: " + line
             newSourceLines.push line
     
     newSourceLines
@@ -226,8 +265,8 @@ sortByTypes = (lines) ->
 
 finaliseTag = (line) ->
     addSpaces = ''
-    if line.level > 0
-        addSpaces += ' ' for i in [0..line.level]
+    if line.indentation > 0
+        addSpaces += ' ' for i in [0..line.indentation]
 
 
     if line.type == 0
@@ -237,7 +276,7 @@ finaliseTag = (line) ->
         if line.styles.length > 0
             lineStyle = 'style "'
 
-            formatTagStyles line 
+            formatTagStyles line
 
             for style in line.styles
                 lineStyle += style + ';'
@@ -255,7 +294,8 @@ finaliseTag = (line) ->
                 line.final += property + ' '
         
             line.final = line.final.slice 0, -1
-        line.final += '>\n'
+        line.final += '>'
+        line.final += '\n' if line.indent > 0
 
 
         if line.children.length > 0
@@ -268,7 +308,8 @@ finaliseTag = (line) ->
                 line.final += child.final
         
         if not line.selfClosing
-            line.final += addSpaces + '</' + line.source + '>\n'
+            line.final += addSpaces + '</' + line.source + '>'
+            line.final += '\n' if line.indent > 0
     
     
     
@@ -303,7 +344,6 @@ formatTag = (tag) ->
 
 
 formatProperties = (tag) ->
-    console.log tag
     if tag.properties.length > 0
         newProperties = new Array
 
@@ -331,14 +371,15 @@ formatStrings = (tag) ->
     for child in tag.children
         addSpaces = ''
 
-        if child.level > 0
-            addSpaces += ' ' for i in [0..child.level]
+        if child.indentation > 0
+            addSpaces += ' ' for i in [0..child.indentation]
 
         if child.type == stringType
             fullStringSearch = /\".*\"/
             cleanString = child.source.match(fullStringSearch)[0]
             cleanString = cleanString.slice 1, -1
-            child.final = addSpaces + cleanString + "\n"
+            child.final = addSpaces + cleanString
+            child.final += '\n' if child.indent > 0 + "\n"
 
 
 formatTagStyles = (tag) ->
@@ -354,3 +395,11 @@ formatTagStyles = (tag) ->
                 cleanStyleProperty += ' ' if x < afterArray.length - 1
 
         style = cleanStyleProperty
+
+
+formatLevels = (tag) ->
+    for child in tag.children
+        child.level = tag.level + 1
+
+        if child.children
+            formatLevels child
