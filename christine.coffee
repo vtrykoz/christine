@@ -14,7 +14,7 @@ coffee = require 'coffee-script'
 
 # LINE TYPES
 tagType             = 0 #if no another type found and this is not a script
-tagFilter           = /^\s*\w+ *(( +\w+)?( *)?( +is( +.*)?)?)?$/i
+tagFilter           = /^\s*[\w\-]+ *(( +\w+)?( *)?( +is( +.*)?)?)?$/i
 
 tagPropertyType     = 1 #if found property "something"
 tagPropertyFilter   = /^\s*[\w\-]+ *".*"/
