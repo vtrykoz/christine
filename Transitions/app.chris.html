@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+    <head>
+        <style>
+            .hidden{
+                display: none!important
+            }
+            .button{
+                transition: all .3s cubic-bezier(0.42, 0, 0.32, 1), margin 0s
+                cursor: pointer
+                margin: 4px
+                padding: 16px 32px
+                border-radius: 8px
+                vertical-align: top
+                color: black
+                display: inline-block
+                position: relative
+            }
+            .button-red{
+                background: #F5422F
+            }
+            .button-yellow{
+                background: #FFCA0D
+            }
+            .button-blue{
+                background: #00ACE3
+            }
+            .view{
+                z-index: 9999
+                padding: 64px !important
+                border-radius: 0
+                height: 100vh !important
+                width: 100vw !important
+                top: 0 !important
+                left: 0 !important
+                position: absolute
+            }
+        </style>
+        <meta content="text/html; charset=utf-8" charset="utf-8" http-equiv="Content-Type">
+        <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable = no" name="viewport">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600,700,800,900,900i&amp;subset=cyrillic">
+    </head>
+    <body style="user-select: none;text-align: center;font-size: 16px;font-family: 'Montserrat';overflow: hidden;padding: 64px;margin: 0;color: white;background: black;">
+        <div id="stage" style="overflow: hidden;bottom: 0;top: 0;right: 0;left: 0;position: absolute;">
+            <div id="app" style="padding-top: calc(50vh - 44px);box-sizing: border-box;padding: 64px;">
+                <div id="buttonTemplate" class="button hidden">
+                    {{title}}
+                </div>
+            </div>
+        </div>
+        SSSSUUUUUKKKKAAAAAAAAAAAAA    src "watch.js"
+        </script>
+        SSSSUUUUUKKKKAAAAAAAAAAAAA    src "f16.js"
+        </script>
+        SSSSUUUUUKKKKAAAAAAAAAAAAA    @clearViewPositions = (e) ->
+                e.stopPropagation()
+                this.style.position = ''
+                this.style.width = ''
+                this.style.height = ''
+                this.style.left = ''
+                this.style.top = ''
+                this.style.margin = ''
+                this.style.zIndex = ''
+                this.parentNode.removeChild this.tempObj
+                this.removeEventListener 'transitionend', clearViewPositions
+            @back = (el) ->
+                el.classList.toggle 'view', false
+                el.onclick = (e) ->
+                    e.stopPropagation()
+                    toFixed el
+                el.addEventListener 'transitionend', clearViewPositions
+            @toFixed = (el) ->
+                bounds = el.getBoundingClientRect()
+                cs = getComputedStyle el
+                tempObj = document.createElement 'div'
+                tempObj.style.width = bounds.width + 'px'
+                tempObj.style.height = bounds.height + 'px'
+                tempObj.style.marginTop = cs.marginTop
+                tempObj.style.marginBottom = cs.marginBottom
+                tempObj.style.marginLeft = cs.marginLeft
+                tempObj.style.marginRight = cs.marginRight
+                tempObj.style.display = cs.display
+                tempObj.style.position = cs.position
+                tempObj.style.verticalAlign = cs.verticalAlign
+                el.tempObj = tempObj
+                el.style.position = 'absolute'
+                el.style.width = bounds.width + 'px'
+                el.style.height = bounds.height + 'px'
+                el.style.boxSizing = 'border-box'
+                el.style.zIndex = 99999
+                el.style.left = bounds.left + 'px'
+                el.style.top = bounds.top + 'px'
+                el.style.margin = 0
+                el.parentNode.insertBefore tempObj, el
+                ttt = () ->
+                    el.classList.toggle 'view', true
+                    el.onclick = (e) ->
+                        e.stopPropagation()
+                        back(el)
+                setTimeout ttt, 20
+            data = [
+                { title : "Red View", color : "red" }
+                { title : "Blue View", color : "blue" }
+                { title : "Yellow View", color : "yellow" }
+                { title : "Red View", color : "red" }
+                { title : "Blue View", color : "blue" }]
+            for i in [0...data.length]
+                nEl = f16.createFromTemplate buttonTemplate, data[i], () ->
+                    this.node.classList.toggle 'button-' + this.data.color, true
+                app.appendChild nEl.node
+                nEl.node.onclick = (e) ->
+                    e.stopPropagation()
+                    toFixed this
+        </coffeescript>
+    </body>
+</html>

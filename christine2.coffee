@@ -2,6 +2,8 @@ fs = require 'fs'
 Path = require 'path'
 coffee = require 'coffee-script'
 
+
+
 # LINE TYPES
 
 selfClosingTags = ['br', 'img', 'input', 'hr', 'meta', 'link']
@@ -23,6 +25,7 @@ stringType          = 4 #if found "string"
 stringFilter        = /^\s*".*"/i
 
 scriptTagFilter     = /^\s*(script|coffeescript|javascript|coffee)/i
+coffeescriptTagFilter = /^\s*(coffeescript|coffee)/i
 scriptType          = 5 #if it is under the script tag
 scriptTagType       = 9
 
@@ -67,9 +70,6 @@ exports.christinize = (sourceText, indent) ->
 
     chrisFile.source = processModules chrisFile.source, ''
 
-    console.log "hey!"
-    console.log chrisFile.source
-
     processHierarchy chrisFile
 
     processTypes chrisFile.inProgressLines
@@ -87,8 +87,16 @@ exports.christinize = (sourceText, indent) ->
     chrisFile.final = doctype + chrisFile.inProgressLines.final
 
     console.log chrisFile.final
-    console.log chrisFile
-    chrisFile
+    chrisFile.final
+
+
+
+
+processVariables
+
+
+
+
 
 
 loadChrisModule = (moduleFilePath) ->
@@ -334,7 +342,7 @@ sortByTypes = (lines) ->
 typeAllScripts = (scriptLine) ->
     if scriptLine.children.length > 0
         for codeLine in scriptLine.children
-            codeLine.type = 5
+            codeLine.type = scriptType
             codeLine.final = codeLine.source
             typeAllScripts(codeLine) if codeLine.children.length > 0
 
@@ -350,8 +358,14 @@ finaliseTag = (line) ->
     if line.type == styleClassType
         finaliseStyle line
 
-    if line.type == 0 or line.type == 9 or line.type == headTagType
+    if line.type == tagType or line.type == scriptTagType or line.type == headTagType
+        coffeeScript = false
         formatTag line
+
+        if line.type == scriptTagType
+            if coffeescriptTagFilter.test line.source
+                line.source = 'script'
+                coffeeScript = true
 
         line.final = '<' + line.source
 
@@ -391,9 +405,11 @@ finaliseTag = (line) ->
             for child in line.children
                 finaliseTag child
             
+            linesOfChildren = ''
+
             for child in line.children
-                childLines = child.final.split '\n'
                 newFinal = ''
+                childLines = child.final.split '\n'
                 
                 for l in childLines
                     if l.length > 0
@@ -403,9 +419,14 @@ finaliseTag = (line) ->
                 newFinal += '\n' if line.indent > 0
                 
                 newFinal = newFinal.slice 0, -1
+                
                 child.final = newFinal
+                linesOfChildren += newFinal
 
-                line.final += child.final
+            if coffeeScript
+                linesOfChildren = coffee.compile linesOfChildren
+            
+            line.final += linesOfChildren
             
         
         if not line.selfClosing
@@ -573,3 +594,29 @@ formatLevels = (tag) ->
 
         if child.children
             formatLevels child
+
+
+cleanUpFile = (sFile) ->
+    carriageTabTest = /[\r\t]/gmi
+
+    rFile = sFile
+    while carriageTabTest.test(rFile)
+        rFile = rFile.replace('\r', '\n').replace('\t', '    ')
+    rFile
+
+
+
+exports.christinizeFile = (chrisFilePath, indent) ->
+    sourceFile = fs.readFileSync(chrisFilePath, 'utf8')
+    sourceFile = cleanUpFile(sourceFile)
+
+    chrisRootFolder = Path.dirname chrisFilePath
+    christinizedFile = @christinize(sourceFile, indent)
+
+    fs.writeFile('./' + chrisFilePath + '.html', christinizedFile)
+    christinizedFile
+
+exports.christinizeAndSave = (chrisSource, indent) ->
+
+    christinizedFile = @christinize(chrisSource, indent)
+    fs.writeFile('./chrisPreview.html', christinizedFile)
