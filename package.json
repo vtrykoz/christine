@@ -1,6 +1,6 @@
 {
   "name": "christine",
-  "version": "0.0.206",
+  "version": "0.0.207",
   "description": "Syntactic sugar for HTML/CSS + CoffeeScript",
   "main": "christine.js",
   "scripts": {
