@@ -144,7 +144,7 @@ processVariables = (ls, tps) ->
  # Module processing functions
 
 loadChrisModule = (moduleFilePath) ->
-    msls = fs.readFileSync('./' + moduleFilePath, 'utf8')
+    msls = fs.readFileSync(moduleFilePath, 'utf8')
     msls = cleanUpFile(msls)
     mls = msls.split '\n'
     mls
@@ -161,7 +161,7 @@ processModules = (ls, f) ->
             moduleLevel = moduleLevelFilter.exec(ls[x])
             moduleLines[l] = moduleLevel + moduleLines[l] for l in [0...moduleLines.length]
 
-            moduleLines = processModules(moduleLines, path.dirname(f + '/' + chrisModulePath))
+            moduleLines = processModules(moduleLines, Path.dirname(f + '/' + chrisModulePath))
             resultLs = resultLs.concat(moduleLines)
         else
             resultLs.push ls[x]
@@ -534,7 +534,15 @@ exports.christinizeFile = (chrisFilePath) ->
     fs.writeFile(chrisFilePath + '.html', christinizedFile, -> console.log 'ok')
     christinizedFile
 
-exports.christinizeAndSave = (chrisSource) ->
 
+exports.christinizeAndSave = (chrisSource) ->
     christinizedFile = shtml(chrisSource)
     fs.writeFile('./chrisPreview.html', christinizedFile)
+
+
+exports.christinizeFileWithoutSaving = (chrisFilePath) ->
+    sourceFile = fs.readFileSync(chrisFilePath, 'utf8')
+    sourceFile = cleanUpFile(sourceFile)
+
+    chrisRootFolder = Path.dirname chrisFilePath
+    shtml(sourceFile)
