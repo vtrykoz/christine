@@ -531,7 +531,7 @@ exports.christinizeFile = (chrisFilePath) ->
     chrisRootFolder = Path.dirname chrisFilePath
     christinizedFile = shtml(sourceFile)
 
-    fs.writeFile('./' + chrisFilePath + '.html', christinizedFile)
+    fs.writeFile(chrisFilePath + '.html', christinizedFile, -> console.log 'ok')
     christinizedFile
 
 exports.christinizeAndSave = (chrisSource) ->
