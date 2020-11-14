@@ -233,7 +233,7 @@ cleanupLines = (sourceLines) ->
 
 
 analiseType = (line) ->
-    lineType = -1
+    lineType = -2
 
     lineType = ignorableType if commentFilter.test line
     lineType = ignorableType if emptyFilter.test line
@@ -404,7 +404,6 @@ finaliseTag = (line) ->
 
             line.attributes.push lineStyle
         
-        console.log line.attributes
         formatAttributes line
         
 
