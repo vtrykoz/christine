@@ -1,6 +1,6 @@
 fs = require 'fs'
 Path = require 'path'
-coffee = require 'coffee-script'
+coffee = require 'coffeescript'
 
 
 
@@ -9,11 +9,13 @@ coffee = require 'coffee-script'
 selfClosingTags = ['br', 'img', 'input', 'hr', 'meta', 'link']
 headTags = ['meta', 'title', 'style', 'class', 'link', 'base']
 
-tagType             = 0 #if no another type found and this is not a script
-tagFilter           = /^\s*\w+ *(( +\w+)?( *)?( +is( +.*)?)?)?$/i
+tagType             = 0 #if found tag#id.class
+tagFilter           = /^[\ \t]*\w+\ *([.#][\w-_]+\ *)*$/i
 
-tagPropertyType     = 1 #if found property "something"
-tagPropertyFilter   = /^\s*[\w\-]+ *".*"/
+tagAttributeType     = 1 #if found attribut = "value"
+                         # need to replace double quote and ampersand after
+                         # to &#34; and &#38
+tagAttributeFilter   = /^\s*[\w\-]+ *".*"/
 
 styleClassType      = 2 #if this is tag and the tag is style
 styleClassFilter    = /^\s*(style|class)\s+[\w:_-]+/i
@@ -49,17 +51,21 @@ commentFilter       = /^\s*#/i
 
 
 
-exports.christinize = (sourceText, indent) ->
+exports.christinize =  (sourceText,
+                        options = {
+                            indent : 4
+                            modulesDirectory : './'
+                        }) ->
     chrisFile =
         source : []
         inProgressLines : 
-            level : -1
-            children : []
             source : 'html'
-            type : 0
-            properties : []
+            type : tagType
+            level : -1
+            attributes : []
             styles : []
-            indent : indent
+            children : []
+            indent : options.indent
 
         final : ''
     
@@ -68,39 +74,55 @@ exports.christinize = (sourceText, indent) ->
 
     chrisFile.source = cleanupLines sourceText.split '\n'
 
-    chrisFile.source = processModules chrisFile.source, ''
-
+    chrisFile.source = processModules chrisFile.source, options.modulesDirectory
     processHierarchy chrisFile
-
     processTypes chrisFile.inProgressLines
-
     sortByTypes chrisFile.inProgressLines
-
     sortByBodyHead chrisFile
-
     finaliseTag chrisFile.inProgressLines
 
     
     doctype = '<!doctype html>'
-    doctype += '\n' if indent
+    doctype += '\n' if options.indent
 
     chrisFile.final = doctype + chrisFile.inProgressLines.final
 
-    console.log chrisFile.final
     chrisFile.final
 
 
 
 
-processVariables
+# processVariables
 
 
+
+createNewFile = (sourceText,
+                 options = {
+                    indent : 4
+                    modulesDirectory : './'
+                }) ->
+    
+    console.log options
+    
+    chrisFile =
+        source : cleanupLines sourceText.split '\n'
+        inProgressLines : 
+            source : 'html'
+            type : tagType
+            level : -1
+            attributes : []
+            styles : []
+            children : []
+            indent : options.indent
+        
+        options : options
+        final : ''
 
 
 
 
 loadChrisModule = (moduleFilePath) ->
-    msls = fs.readFileSync('./' + moduleFilePath, 'utf8')
+    msls = fs.readFileSync(moduleFilePath, 'utf8')
     msls = cleanupLines(msls.split '\n')
     msls
 
@@ -111,13 +133,16 @@ processModules = (ls, f) ->
     for x in [0...ls.length]
         if moduleFilter.test ls[x]
             chrisModulePath = ls[x].split('"')[1]
-            moduleLines = loadChrisModule(f + '/' + chrisModulePath)
+            moduleLines = loadChrisModule "#{f}/#{chrisModulePath}" 
 
             moduleLevel = moduleLevelFilter.exec(ls[x])
-            moduleLines[l] = moduleLevel + moduleLines[l] for l in [0...moduleLines.length]
+            for l in [0...moduleLines.length]
+                moduleLines[l] = moduleLevel + moduleLines[l] 
 
-            moduleLines = processModules(moduleLines, path.dirname(f + '/' + chrisModulePath))
-            resultLs = resultLs.concat(moduleLines)
+            moduleLines = processModules moduleLines,
+                                         path.dirname "#{f}/#{chrisModulePath}"
+            
+            resultLs = resultLs.concat moduleLines
         else
             resultLs.push ls[x]
 
@@ -127,41 +152,40 @@ processModules = (ls, f) ->
 
 sortByBodyHead = (file) ->
     headTag =
-        level : -1
-        parent: file.inProgressLines
-        children : []
         source : 'head'
         type : tagType
-        properties : []
+        parent: file.inProgressLines
+        level : -1
+        attributes : []
         styles : []
-    
-    styleTag =
-        level : 0
-        parent: headTag
         children : []
+    
+    headTag.children.push
         source : 'style'
         type : headTagType
-        properties : []
+        parent: headTag
+        level : 0
+        attributes : []
         styles : []
+        children : []
 
-    headTag.children.push styleTag
 
     bodyTag =
-        level : -1
-        parent: file.inProgressLines
-        children : []
         source : 'body'
         type : tagType
-        properties : []
+        parent: file.inProgressLines
+        level : -1
+        attributes : []
         styles : []
+        children : []
     
 
     for tag in file.inProgressLines.children
-        addedToHead = false
+        addedToHead = no
 
         for headTagTemplate in headTags
             if tag.source == headTagTemplate
-                addedToHead = true
+                addedToHead = yes
                 tag.parent = headTag
                 headTag.children.push tag
 
@@ -174,10 +198,10 @@ sortByBodyHead = (file) ->
                 bodyTag.children.push tag
 
     bodyTag.styles = file.inProgressLines.styles
-    bodyTag.properties = file.inProgressLines.properties
+    bodyTag.attributes = file.inProgressLines.attributes
 
     file.inProgressLines.styles = new Array
-    file.inProgressLines.properties = new Array
+    file.inProgressLines.attributes = new Array
     file.inProgressLines.children = new Array
 
     file.inProgressLines.children.push headTag
@@ -222,7 +246,7 @@ analiseType = (line) ->
 
     lineType = headTagType if headTagFilter.test line
     lineType = styleClassType if styleClassFilter.test line
-    lineType = tagPropertyType if tagPropertyFilter.test line
+    lineType = tagAttributeType if tagAttributeFilter.test line
     lineType = stringType if stringFilter.test line
     lineType = variableType if variableFilter.test line
     lineType = moduleType if moduleFilter.test line
@@ -261,7 +285,7 @@ processHierarchy = (file) ->
                 children : []
                 parent : currentParent
                 level : lineLevel
-                properties : []
+                attributes : []
                 styles : []
 
             currentParent.children.push newLine
@@ -276,7 +300,7 @@ processHierarchy = (file) ->
                 children : []
                 parent : currentParent
                 level : lineLevel
-                properties : []
+                attributes : []
                 styles : []
 
             currentParent.children.push newLine
@@ -288,8 +312,8 @@ processHierarchy = (file) ->
 
 
 
-processTypes = (lines) ->
-    for line in lines.children
+processTypes = (line) ->
+    for line in line.children
         if line.source
             line.type = analiseType line.source
         else
@@ -304,7 +328,7 @@ processTypes = (lines) ->
 
 
 sortByTypes = (lines) ->
-    # extract the styles, properties and strings to their parents
+    # extract the styles, attributes and strings to their parents
 
     for line in lines.children
         if line.type == scriptTagType
@@ -316,11 +340,11 @@ sortByTypes = (lines) ->
         if lines.children[line].children.length > 0
             sortByTypes lines.children[line]
 
-        if lines.children[line].type == tagPropertyType
-            if !lines.children[line].parent.properties
-                lines.children[line].parent.properties = new Array
+        if lines.children[line].type == tagAttributeType
+            if !lines.children[line].parent.attributes
+                lines.children[line].parent.attributes = new Array
             
-            lines.children[line].parent.properties.push lines.children[line].source
+            lines.children[line].parent.attributes.push lines.children[line].source
             lines.children[line].parent.children.splice line , 1
 
             continue
@@ -358,7 +382,10 @@ finaliseTag = (line) ->
     if line.type == styleClassType
         finaliseStyle line
 
-    if line.type == tagType or line.type == scriptTagType or line.type == headTagType
+    if line.type is tagType or 
+       line.type is scriptTagType or 
+       line.type is headTagType
+
         coffeeScript = false
         formatTag line
 
@@ -378,15 +405,15 @@ finaliseTag = (line) ->
                 lineStyle += style + ';'
 
             lineStyle += '"'
-            line.properties.push lineStyle
+            line.attributes.push lineStyle
         
 
-        formatProperties line
+        formatAttributes line
         
 
-        if line.properties.length > 0
+        if line.attributes.length > 0
             line.final += ' '
-            for property in line.properties
+            for property in line.attributes
                 line.final += property + ' '
         
             line.final = line.final.slice 0, -1
@@ -475,6 +502,27 @@ finaliseStyle = (styleTag) ->
 
     
 formatTag = (tag) ->
+    tagDetailsFilter = /^[\ \t]*(?<tag>\w+)\ *(?<attributes>([.#][\w-_]+\ *)+)?$/g
+    tagIdFilter = /#(?<id>\w+)/
+    tagClassFilter = /\.(?<class>[\w-_]+)/g
+    
+    tagDetails = tagDetailsFilter.exec tag.source
+    tag.source = tagDetails.groups.tag
+
+    tagIdFound = tagIdFilter.exec tagDetails.groups.attributes
+    if tagIdFound?
+        tag.attributes.push "id \"#{tagIdFound.groups.id}\""
+
+    tagClassFound = tagClassFilter.exec tagDetails.groups.attributes
+    if tagClassFound?
+        allClasses = ""
+        while tagClassFound?
+            allClasses += tagClassFound.groups.class + " "
+            tagClassFound = tagClassFilter.exec tagDetails.groups.attributes
+    
+        tag.attributes.push "class \"#{allClasses.slice 0, allClasses.length - 1}\""
+
+    ###
     tagArray = tag.source.split /\s+/
     tag.source = tagArray[0]
 
@@ -487,7 +535,7 @@ formatTag = (tag) ->
 
     if tagArray.length > 0
         if tagArray[0] != 'is'
-            tag.properties.push 'id "' + tagArray[0] + '"'
+            tag.attributes.push 'id "' + tagArray[0] + '"'
             tagArray.splice(0,1)
         
         if tagArray[0] == 'is'
@@ -499,17 +547,17 @@ formatTag = (tag) ->
             tagClasses = tagClasses.slice 0, -1
             tagClasses += '"'
 
-            tag.properties.push tagClasses
+            tag.attributes.push tagClasses###
 
     tag.final = ''
     tag
 
 
-formatProperties = (tag) ->
-    if tag.properties.length > 0
-        newProperties = new Array
+formatAttributes = (tag) ->
+    if tag.attributes.length > 0
+        newattributes = new Array
 
-        for property in tag.properties
+        for property in tag.attributes
             newProperty = '='
 
             propertyNameSearch = /^[\w\-]+( *)?"/i
@@ -523,9 +571,9 @@ formatProperties = (tag) ->
             propertyDetails = property.match(propertyDetailsSearch)[0]
             newProperty += propertyDetails
 
-            newProperties.push newProperty
+            newattributes.push newProperty
 
-        tag.properties = newProperties
+        tag.attributes = newattributes
 
 
 formatStrings = (tag) ->
@@ -606,17 +654,43 @@ cleanUpFile = (sFile) ->
 
 
 
-exports.christinizeFile = (chrisFilePath, indent) ->
+exports.christinizeFile = (chrisFilePath,
+                 options = {
+                    indent : 4
+                    modulesDirectory : './'
+                }) ->
+
+    sourceFile = fs.readFileSync(chrisFilePath, 'utf8')
+    sourceFile = cleanUpFile(sourceFile) 
+
+    chrisRootFolder = Path.dirname chrisFilePath
+    christinizedFile = @christinize(sourceFile, indent)
+
+    #fs.writeFile('./' + chrisFilePath + '.html', christinizedFile)
+    #christinizedFile
+
+exports.christinizeAndSave = (chrisSource,
+                 options = {
+                    indent : 4
+                    modulesDirectory : './'
+                }) ->
+
+    christinizedFile = @christinize(chrisSource, options)
+    fs.writeFile('./chrisPreview.html', christinizedFile)
+
+
+exports.buildFile = (chrisFilePath,
+                 options = {
+                    indent : 4
+                    modulesDirectory : './'
+                }) ->
+    
     sourceFile = fs.readFileSync(chrisFilePath, 'utf8')
     sourceFile = cleanUpFile(sourceFile)
 
     chrisRootFolder = Path.dirname chrisFilePath
     christinizedFile = @christinize(sourceFile, indent)
 
+
     fs.writeFile('./' + chrisFilePath + '.html', christinizedFile)
     christinizedFile
-
-exports.christinizeAndSave = (chrisSource, indent) ->
-
-    christinizedFile = @christinize(chrisSource, indent)
-    fs.writeFile('./chrisPreview.html', christinizedFile)
