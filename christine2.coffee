@@ -12,27 +12,24 @@ headTags = ['meta', 'title', 'style', 'class', 'link', 'base']
 tagType             = 0 #if found tag#id.class
 tagFilter           = /^[\ \t]*\w+\ *([.#][\w-_]+\ *)*$/i
 
-tagAttributeType     = 1 #if found attribut = "value"
+tagAttributeType     = 1 #if found attribute = "value"
                          # need to replace double quote and ampersand after
                          # to &#34; and &#38
-tagAttributeFilter   = /^\s*[\w\-]+ *".*"/
+tagAttributeFilter   = /^[\t\ ]*[\w-_@$&#]+[\t\ ]*=[\ \t]*[^\n]*$/
 
-styleClassType      = 2 #if this is tag and the tag is style
-styleClassFilter    = /^\s*(style|class)\s+[\w:_-]+/i
+styleClassType      = 2 # if found style selector 
+styleClassFilter    = /^[\t\ ]*style[\t\ ]*(?<selector>[^\n]+)$/i
 
-stylePropertyType   = 3 #if found property: something
-stylePropertyFilter = /^\s*[^"' ]+ *: *.*/i
+styleAttributeType   = 3 #if found attribute: something
+styleAttributeFilter = /^\s*[^"' ]+ *: *.*/i
 
 stringType          = 4 #if found "string"
-stringFilter        = /^\s*".*"/i
+stringFilter        = /^[\t\ ]*".*"/i
 
 scriptTagFilter     = /^\s*(script|coffeescript|javascript|coffee)/i
 coffeescriptTagFilter = /^\s*(coffeescript|coffee)/i
 scriptType          = 5 #if it is under the script tag
 scriptTagType       = 9
-
-variableType        = 6 # if found name = something
-variableFilter      = /^\s*\w+\s*=\s*[\w\W]+/i
 
 headTagType         = 7
 headTagFilter       = /^\s*(meta|title|link|base)/i
@@ -92,7 +89,6 @@ exports.christinize =  (sourceText,
 
 
 
-# processVariables
 
 
 
@@ -133,7 +129,7 @@ processModules = (ls, f) ->
     for x in [0...ls.length]
         if moduleFilter.test ls[x]
             chrisModulePath = ls[x].split('"')[1]
-            moduleLines = loadChrisModule "#{f}/#{chrisModulePath}" 
+            moduleLines = loadChrisModule chrisModulePath
 
             moduleLevel = moduleLevelFilter.exec(ls[x])
             for l in [0...moduleLines.length]
@@ -159,8 +155,9 @@ sortByBodyHead = (file) ->
         attributes : []
         styles : []
         children : []
+
     
-    headTag.children.push
+    styleTag =
         source : 'style'
         type : headTagType
         parent: headTag
@@ -168,6 +165,8 @@ sortByBodyHead = (file) ->
         attributes : []
         styles : []
         children : []
+
+    headTag.children.push styleTag
 
 
     bodyTag =
@@ -238,7 +237,7 @@ analiseType = (line) ->
 
     lineType = ignorableType if commentFilter.test line
     lineType = ignorableType if emptyFilter.test line
-    lineType = stylePropertyType if stylePropertyFilter.test line
+    lineType = styleAttributeType if styleAttributeFilter.test line
     if tagFilter.test line
         lineType = tagType 
         if scriptTagFilter.test line
@@ -248,7 +247,6 @@ analiseType = (line) ->
     lineType = styleClassType if styleClassFilter.test line
     lineType = tagAttributeType if tagAttributeFilter.test line
     lineType = stringType if stringFilter.test line
-    lineType = variableType if variableFilter.test line
     lineType = moduleType if moduleFilter.test line
     
     lineType
@@ -349,7 +347,7 @@ sortByTypes = (lines) ->
 
             continue
         
-        if lines.children[line].type == stylePropertyType
+        if lines.children[line].type == styleAttributeType
             if !lines.children[line].parent.styles
                 lines.children[line].parent.styles = new Array
             
@@ -379,7 +377,7 @@ finaliseTag = (line) ->
     if line.indent > 0
         addSpaces += ' ' for i in [0...line.indent]
 
-    if line.type == styleClassType
+    if line.type is styleClassType
         finaliseStyle line
 
     if line.type is tagType or 
@@ -397,24 +395,23 @@ finaliseTag = (line) ->
         line.final = '<' + line.source
 
         if line.styles.length > 0
-            lineStyle = 'style "'
+            lineStyle = 'style = '
 
             formatTagStyles line
 
             for style in line.styles
                 lineStyle += style + ';'
 
-            lineStyle += '"'
             line.attributes.push lineStyle
         
-
+        console.log line.attributes
         formatAttributes line
         
 
         if line.attributes.length > 0
             line.final += ' '
-            for property in line.attributes
-                line.final += property + ' '
+            for attribute in line.attributes
+                line.final += attribute + ' '
         
             line.final = line.final.slice 0, -1
         line.final += '>'
@@ -468,18 +465,11 @@ finaliseStyle = (styleTag) ->
     if styleTag.indent > 0
         addSpaces += ' ' for i in [0...styleTag.indent]
 
-    finalTag = '#'
+    finalTag = ''
 
-    tagArray = styleTag.source.split ' '
+    tagDetails = styleClassFilter.exec styleTag.source
 
-    finalTag = '.' if tagArray[0] == 'class'
-
-    if tagArray[1] == 'tag'
-        finalTag = ''
-        finalTag += tagArray[2]
-    else
-        finalTag += tagArray[1]
-
+    finalTag += tagDetails.groups.selector.replace /\ *$/, ' '
     finalTag += '{'
     
     formatTagStyles styleTag
@@ -489,7 +479,7 @@ finaliseStyle = (styleTag) ->
             finalTag += '\n'
             finalTag += addSpaces
 
-        finalTag += style
+        finalTag += "#{style};"
     
     if styleTag.indent > 0
         finalTag += '\n'
@@ -509,9 +499,7 @@ formatTag = (tag) ->
     tagDetails = tagDetailsFilter.exec tag.source
     tag.source = tagDetails.groups.tag
 
-    tagIdFound = tagIdFilter.exec tagDetails.groups.attributes
-    if tagIdFound?
-        tag.attributes.push "id \"#{tagIdFound.groups.id}\""
+    
 
     tagClassFound = tagClassFilter.exec tagDetails.groups.attributes
     if tagClassFound?
@@ -520,8 +508,22 @@ formatTag = (tag) ->
             allClasses += tagClassFound.groups.class + " "
             tagClassFound = tagClassFilter.exec tagDetails.groups.attributes
     
-        tag.attributes.push "class \"#{allClasses.slice 0, allClasses.length - 1}\""
+        tag.attributes.unshift "class=#{allClasses.slice 0, -1}"
 
+
+
+    tagIdFound = tagIdFilter.exec tagDetails.groups.attributes
+    if tagIdFound?
+        tag.attributes.unshift "id=#{tagIdFound.groups.id}"
+
+
+
+    tag.selfClosing = no
+
+    for selfClosingTag in selfClosingTags
+        if tag.source is selfClosingTag
+            tag.selfClosing = yes
+    
     ###
     tagArray = tag.source.split /\s+/
     tag.source = tagArray[0]
@@ -555,32 +557,22 @@ formatTag = (tag) ->
 
 formatAttributes = (tag) ->
     if tag.attributes.length > 0
-        newattributes = new Array
+        newattributes =
+            for attribute in tag.attributes
+                attributeDetailsFilter = /^[\t\ ]*(?<attribute>[\w-_@$&#]+)[\t\ ]*=[\t\ ]*(?<value>[^\n]*)$/
+                attributeDetails = attributeDetailsFilter.exec attribute
+                
+                attributeName = attributeDetails.groups.attribute
+                attributeValue = attributeDetails.groups.value
 
-        for property in tag.attributes
-            newProperty = '='
-
-            propertyNameSearch = /^[\w\-]+( *)?"/i
-            propertyName = property.match(propertyNameSearch)[0]
-            propertyName = propertyName.split(" ")[0]
-            propertyName = propertyName.split('"')[0]
-
-            newProperty = propertyName + newProperty
-
-            propertyDetailsSearch = /\".*\"/
-            propertyDetails = property.match(propertyDetailsSearch)[0]
-            newProperty += propertyDetails
-
-            newattributes.push newProperty
+                "#{attributeName}=\"#{attributeValue}\""
 
         tag.attributes = newattributes
 
 
 formatStrings = (tag) ->
-    
     for child in tag.children
-
-        if child.type == stringType
+        if child.type is stringType
             fullStringSearch = /\".*\"/
             cleanString = child.source.match(fullStringSearch)[0]
             cleanString = cleanString.slice 1, -1
@@ -624,16 +616,16 @@ formatScripts = (tag) ->
 formatTagStyles = (tag) ->
     for style in tag.styles
         dividerPosition = style.indexOf ':'
-        propertyAfter = style.slice (dividerPosition + 1)
-        cleanStyleProperty = style.split(':')[0] + ':'
-        afterArray = propertyAfter.split ' '
+        attributeAfter = style.slice (dividerPosition + 1)
+        cleanStyleattribute = style.split(':')[0] + ':'
+        afterArray = attributeAfter.split ' '
 
         for x in [0...afterArray.length]
             if afterArray[x] != ''
-                cleanStyleProperty += afterArray[x]
-                cleanStyleProperty += ' ' if x < afterArray.length - 1
+                cleanStyleattribute += afterArray[x]
+                cleanStyleattribute += ' ' if x < afterArray.length - 1
 
-        style = cleanStyleProperty
+        style = cleanStyleattribute
 
 
 formatLevels = (tag) ->
@@ -682,15 +674,14 @@ exports.christinizeAndSave = (chrisSource,
 exports.buildFile = (chrisFilePath,
                  options = {
                     indent : 4
-                    modulesDirectory : './'
                 }) ->
     
+    options.modulesDirectory = path.dirname chrisFilePath
     sourceFile = fs.readFileSync(chrisFilePath, 'utf8')
     sourceFile = cleanUpFile(sourceFile)
 
-    chrisRootFolder = Path.dirname chrisFilePath
-    christinizedFile = @christinize(sourceFile, indent)
+    christinizedFile = @christinize(sourceFile, options)
 
-
-    fs.writeFile('./' + chrisFilePath + '.html', christinizedFile)
+    chrisFilePath = chrisFilePath.replace(/\.chris$/i, '.html')
+    fs.writeFileSync('./' + chrisFilePath, christinizedFile)
     christinizedFile
